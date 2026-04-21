@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: pos_duang
+      POSTGRES_USER: pos_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ChangeMeNow2024!}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pos_user -d pos_duang"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://pos_user:${DB_PASSWORD:-ChangeMeNow2024!}@db:5432/pos_duang?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-random-string-64-chars}
+      JWT_EXPIRES_IN: 7d
+      PORT: 4000
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata:

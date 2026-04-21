@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  username  String   @unique
+  password  String
+  role      String   @default("CASHIER")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sales     Sale[]
+  auditLogs AuditLog[]
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  color     String?
+  icon      String?
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  barcode     String?  @unique
+  name        String
+  description String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  costPrice   Decimal  @db.Decimal(10, 2)
+  sellPrice   Decimal  @db.Decimal(10, 2)
+  unit        String   @default("ชิ้น")
+  unitOptions String?
+  stock       Int      @default(0)
+  minStock    Int      @default(5)
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  saleItems      SaleItem[]
+  stockMovements StockMovement[]
+}
+
+model Sale {
+  id              String     @id @default(cuid())
+  receiptNo       String     @unique
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  customerId      String?
+  customer        Customer?  @relation(fields: [customerId], references: [id])
+  items           SaleItem[]
+  subtotal        Decimal    @db.Decimal(10, 2)
+  discountAmount  Decimal    @db.Decimal(10, 2) @default(0)
+  discountPercent Decimal    @db.Decimal(5, 2)  @default(0)
+  vatAmount       Decimal    @db.Decimal(10, 2) @default(0)
+  total           Decimal    @db.Decimal(10, 2)
+  paymentMethod   String
+  amountPaid      Decimal    @db.Decimal(10, 2)
+  change          Decimal    @db.Decimal(10, 2) @default(0)
+  status          String     @default("COMPLETED")
+  note            String?
+  createdAt       DateTime   @default(now())
+}
+
+model SaleItem {
+  id          String  @id @default(cuid())
+  saleId      String
+  sale        Sale    @relation(fields: [saleId], references: [id])
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String
+  unit        String
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(10, 2)
+  discount    Decimal @db.Decimal(10, 2) @default(0)
+  total       Decimal @db.Decimal(10, 2)
+}
+
+model StockMovement {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  type          String
+  quantity      Int
+  balanceBefore Int
+  balanceAfter  Int
+  referenceId   String?
+  note          String?
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  createdAt     DateTime  @default(now())
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?  @unique
+  address   String?
+  points    Int      @default(0)
+  isMember  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  sales     Sale[]
+}
+
+model Supplier {
+  id             String          @id @default(cuid())
+  name           String
+  contactName    String?
+  phone          String?
+  address        String?
+  note           String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  stockMovements StockMovement[]
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  detail    String?
+  createdAt DateTime @default(now())
+}
