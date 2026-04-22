@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cyber-bg: #0a0e1a;
+  --color-cyber-surface: #111827;
+  --color-cyber-card: #1a2236;
+  --color-cyber-border: #1e2a42;
+  --color-cyber-accent: #00e5ff;
+  --color-cyber-green: #00ff88;
+  --color-cyber-red: #ff3366;
+  --color-cyber-yellow: #ffaa00;
+  --color-cyber-purple: #a855f7;
+  --color-cyber-text: #e2e8f0;
+  --color-cyber-muted: #64748b;
+}
+
+body {
+  background: var(--color-cyber-bg);
+  color: var(--color-cyber-text);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Glow effects */
+.glow-accent { text-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
+.glow-red { text-shadow: 0 0 10px rgba(255, 51, 102, 0.5); }
+.glow-green { text-shadow: 0 0 10px rgba(0, 255, 136, 0.5); }
+
+.card-glow {
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.05), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e2a42; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2a3a5c; }
+
+/* Pulse animation for critical alerts */
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(255, 51, 102, 0); }
+}
+.pulse-critical { animation: pulse-red 2s infinite; }
+
+/* Scan line effect */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}

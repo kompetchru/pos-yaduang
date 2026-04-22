@@ -122,6 +122,33 @@ export default function POSPage() {
                 placeholder="ค้นหาสินค้า / สแกนบาร์โค้ด..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && search.trim()) {
+                    // สแกนบาร์โค้ด → หาสินค้าที่ barcode ตรง → เพิ่มลงตะกร้าทันที
+                    const exactMatch = products.find(
+                      (p) => p.barcode === search.trim() || p.sku === search.trim()
+                    )
+                    if (exactMatch && exactMatch.stock > 0) {
+                      cart.addItem(exactMatch)
+                      setSearch('')
+                      e.preventDefault()
+                      return
+                    }
+                    // ถ้าไม่เจอ barcode ตรง แต่ค้นหาเจอ 1 ตัว → เพิ่มเลย
+                    const searchResults = products.filter((p) => {
+                      return (
+                        p.name.toLowerCase().includes(search.toLowerCase()) ||
+                        p.sku.toLowerCase().includes(search.toLowerCase()) ||
+                        p.barcode?.includes(search)
+                      ) && p.stock > 0
+                    })
+                    if (searchResults.length === 1) {
+                      cart.addItem(searchResults[0])
+                      setSearch('')
+                      e.preventDefault()
+                    }
+                  }
+                }}
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none text-base"
                 autoFocus
               />
