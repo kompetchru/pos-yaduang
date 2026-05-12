@@ -36,61 +36,16 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
   const [imagePreview, setImagePreview] = useState<string | null>(
     product?.imageData || null
   )
-  const [cameraActive, setCameraActive] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleChange = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  // ─── กล้องถ่ายรูปสินค้า ───
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-      })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.setAttribute('playsinline', 'true')
-        videoRef.current.setAttribute('autoplay', 'true')
-        videoRef.current.muted = true
-        await videoRef.current.play()
-      }
-      setCameraActive(true)
-    } catch {
-      alert('ไม่สามารถเปิดกล้องได้ ลองใช้ "เลือกไฟล์" แทน')
-    }
-  }
-
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return
-    const canvas = canvasRef.current
-    const video = videoRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    canvas.getContext('2d')?.drawImage(video, 0, 0)
-    canvas.toBlob((blob) => {
-      if (blob) {
-        setImageFile(new File([blob], `product-${Date.now()}.jpg`, { type: 'image/jpeg' }))
-        setImagePreview(canvas.toDataURL('image/jpeg', 0.8))
-      }
-    }, 'image/jpeg', 0.8)
-    stopCamera()
-  }
-
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
-      videoRef.current.srcObject = null
-    }
-    setCameraActive(false)
-  }
-
+  // ─── เลือกรูป ───
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -142,7 +97,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { stopCamera(); onClose() }}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { onClose() }}>
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-xl font-bold text-gray-800 mb-4">
           {isEdit ? '✏️ แก้ไขสินค้า' : '➕ เพิ่มสินค้าใหม่'}
@@ -151,15 +106,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
         {/* ถ่ายรูปสินค้า */}
         <div className="mb-4">
           <label className="text-sm font-medium text-gray-700 mb-2 block">📸 รูปสินค้า</label>
-          {cameraActive ? (
-            <div>
-              <video ref={videoRef} className="w-full rounded-xl bg-black" autoPlay playsInline muted style={{ minHeight: '200px' }} />
-              <div className="flex gap-2 mt-2">
-                <Button type="button" onClick={capturePhoto} className="flex-1">📸 ถ่ายรูป</Button>
-                <Button type="button" variant="secondary" onClick={stopCamera}>ยกเลิก</Button>
-              </div>
-            </div>
-          ) : imagePreview ? (
+          {imagePreview ? (
             <div className="relative">
               <img src={imagePreview} alt="preview" className="w-full h-40 object-cover rounded-xl" />
               <button type="button" onClick={() => { setImageFile(null); setImagePreview(null) }}
@@ -167,22 +114,19 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
             </div>
           ) : (
             <div className="flex gap-2">
-              <button type="button" onClick={startCamera}
-                className="flex-1 py-6 border-2 border-dashed border-orange-300 rounded-xl text-center hover:bg-orange-50">
+              <label className="flex-1 py-6 border-2 border-dashed border-orange-300 rounded-xl text-center hover:bg-orange-50 cursor-pointer">
                 <span className="text-2xl block">📷</span>
-                <span className="text-xs text-gray-600">เปิดกล้อง</span>
-              </button>
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="flex-1 py-6 border-2 border-dashed border-gray-300 rounded-xl text-center hover:bg-gray-50">
+                <span className="text-xs text-gray-600">ถ่ายรูป</span>
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
+              </label>
+              <label className="flex-1 py-6 border-2 border-dashed border-gray-300 rounded-xl text-center hover:bg-gray-50 cursor-pointer">
                 <span className="text-2xl block">🖼️</span>
-                <span className="text-xs text-gray-600">เลือกไฟล์</span>
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
+                <span className="text-xs text-gray-600">เลือกจากแกลเลอรี่</span>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+              </label>
             </div>
           )}
         </div>
-
-        <canvas ref={canvasRef} className="hidden" />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* SKU + Barcode */}
@@ -245,7 +189,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
           {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>}
 
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" className="flex-1" onClick={() => { stopCamera(); onClose() }}>ยกเลิก</Button>
+            <Button type="button" variant="secondary" className="flex-1" onClick={() => { onClose() }}>ยกเลิก</Button>
             <Button type="submit" className="flex-[2]" disabled={saving}>
               {saving ? 'กำลังบันทึก...' : isEdit ? 'บันทึกการแก้ไข' : 'เพิ่มสินค้า'}
             </Button>
