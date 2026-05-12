@@ -4,15 +4,13 @@ import api from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { useCartStore } from '@/stores/cart'
 import { Button } from '@/components/ui/button'
-import { LuBanknote, LuSmartphone, LuQrCode, LuCreditCard, LuCheck } from 'react-icons/lu'
+import { LuBanknote, LuQrCode, LuCheck } from 'react-icons/lu'
 import generatePayload from 'promptpay-qr'
 import QRCode from 'qrcode'
 
 const paymentMethods = [
   { key: 'CASH', label: 'เงินสด', icon: LuBanknote },
-  { key: 'TRANSFER', label: 'โอนเงิน', icon: LuSmartphone },
   { key: 'QR_PROMPTPAY', label: 'QR PromptPay', icon: LuQrCode },
-  { key: 'CARD', label: 'บัตร', icon: LuCreditCard },
 ]
 
 const quickCash = [20, 50, 100, 500, 1000]
@@ -127,7 +125,7 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
         </div>
 
         {/* Payment Method */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {paymentMethods.map((pm) => (
             <button
               key={pm.key}
@@ -222,16 +220,6 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
                 </p>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Transfer */}
-        {method === 'TRANSFER' && (
-          <div className="mb-4 bg-blue-50 rounded-xl p-4 text-center">
-            <p className="text-sm text-blue-700 font-medium">โอนเงินมาที่</p>
-            <p className="text-lg font-bold text-blue-800 mt-1">{promptPayId || 'ยังไม่ได้ตั้งค่า'}</p>
-            <p className="text-2xl font-bold text-blue-700 mt-2">{formatCurrency(total)}</p>
-            <p className="text-xs text-gray-500 mt-2">กดยืนยันหลังลูกค้าโอนแล้ว</p>
           </div>
         )}
 
