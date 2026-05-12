@@ -1,16 +1,18 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { useCartStore } from '@/stores/cart'
 import { Button } from '@/components/ui/button'
 import { LuBanknote, LuSmartphone, LuQrCode, LuCreditCard, LuCheck } from 'react-icons/lu'
+import generatePayload from 'promptpay-qr'
+import QRCode from 'qrcode'
 
 const paymentMethods = [
-  { key: 'CASH', label: 'เงินสด', icon: LuBanknote, color: 'bg-green-500' },
-  { key: 'TRANSFER', label: 'โอนเงิน', icon: LuSmartphone, color: 'bg-blue-500' },
-  { key: 'QR_PROMPTPAY', label: 'QR PromptPay', icon: LuQrCode, color: 'bg-purple-500' },
-  { key: 'CARD', label: 'บัตร', icon: LuCreditCard, color: 'bg-gray-600' },
+  { key: 'CASH', label: 'เงินสด', icon: LuBanknote },
+  { key: 'TRANSFER', label: 'โอนเงิน', icon: LuSmartphone },
+  { key: 'QR_PROMPTPAY', label: 'QR PromptPay', icon: LuQrCode },
+  { key: 'CARD', label: 'บัตร', icon: LuCreditCard },
 ]
 
 const quickCash = [20, 50, 100, 500, 1000]
@@ -30,9 +32,32 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
   const [success, setSuccess] = useState(false)
   const [receiptNo, setReceiptNo] = useState('')
   const [change, setChange] = useState(0)
+  const [qrImage, setQrImage] = useState('')
+  const [promptPayId, setPromptPayId] = useState('')
 
   const paid = parseFloat(amountPaid) || 0
   const currentChange = paid - total
+
+  // โหลด PromptPay ID จาก settings
+  useEffect(() => {
+    api.get('/settings').then((res) => {
+      setPromptPayId(res.data.promptpay_id || '')
+    }).catch(() => {})
+  }, [])
+
+  // สร้าง QR เมื่อเลือก PromptPay
+  useEffect(() => {
+    if (method === 'QR_PROMPTPAY' && promptPayId && total > 0) {
+      try {
+        const payload = generatePayload(promptPayId, { amount: total })
+        QRCode.toDataURL(payload, {
+          width: 300,
+          margin: 2,
+          color: { dark: '#000000', light: '#FFFFFF' },
+        }).then(setQrImage).catch(() => {})
+      } catch {}
+    }
+  }, [method, promptPayId, total])
 
   const handlePay = async () => {
     if (method === 'CASH' && paid < total) return
@@ -91,7 +116,7 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-xl font-bold text-gray-800 mb-4">💰 ชำระเงิน</h3>
 
         {/* Total */}
@@ -135,26 +160,19 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
               />
             </div>
 
-            {/* Quick Cash Buttons */}
             <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setAmountPaid(total.toString())}
-                className="flex-1 py-2 rounded-lg bg-orange-100 text-orange-700 font-medium text-sm hover:bg-orange-200"
-              >
+              <button onClick={() => setAmountPaid(total.toString())}
+                className="flex-1 py-2 rounded-lg bg-orange-100 text-orange-700 font-medium text-sm hover:bg-orange-200">
                 พอดี
               </button>
               {quickCash.filter((v) => v >= total).slice(0, 4).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setAmountPaid(v.toString())}
-                  className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200"
-                >
+                <button key={v} onClick={() => setAmountPaid(v.toString())}
+                  className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
                   ฿{v}
                 </button>
               ))}
             </div>
 
-            {/* Change */}
             {paid >= total && (
               <div className="bg-green-50 rounded-xl p-3 mb-4 text-center">
                 <p className="text-sm text-gray-500">เงินทอน</p>
@@ -162,6 +180,36 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
               </div>
             )}
           </>
+        )}
+
+        {/* QR PromptPay */}
+        {method === 'QR_PROMPTPAY' && (
+          <div className="mb-4 text-center">
+            {qrImage ? (
+              <div className="bg-white border-2 border-purple-200 rounded-xl p-4 inline-block">
+                <p className="text-sm text-purple-700 font-medium mb-2">สแกน QR เพื่อชำระ</p>
+                <img src={qrImage} alt="PromptPay QR" className="w-56 h-56 mx-auto" />
+                <p className="text-2xl font-bold text-purple-700 mt-3">{formatCurrency(total)}</p>
+                <p className="text-xs text-gray-500 mt-1">PromptPay: {promptPayId}</p>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 rounded-xl p-4">
+                <p className="text-sm text-yellow-700">
+                  {promptPayId ? 'กำลังสร้าง QR...' : '⚠️ ยังไม่ได้ตั้งค่า PromptPay ID — ไปตั้งค่าที่เมนู "ตั้งค่า"'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Transfer */}
+        {method === 'TRANSFER' && (
+          <div className="mb-4 bg-blue-50 rounded-xl p-4 text-center">
+            <p className="text-sm text-blue-700 font-medium">โอนเงินมาที่</p>
+            <p className="text-lg font-bold text-blue-800 mt-1">{promptPayId || 'ยังไม่ได้ตั้งค่า'}</p>
+            <p className="text-2xl font-bold text-blue-700 mt-2">{formatCurrency(total)}</p>
+            <p className="text-xs text-gray-500 mt-2">กดยืนยันหลังลูกค้าโอนแล้ว</p>
+          </div>
         )}
 
         {/* Actions */}
