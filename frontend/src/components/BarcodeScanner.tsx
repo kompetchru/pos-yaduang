@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useState, useRef } from 'react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { Button } from '@/components/ui/button'
 
@@ -9,102 +9,83 @@ interface Props {
 }
 
 export default function BarcodeScanner({ onScan, onClose }: Props) {
-  const [error, setError] = useState('')
-  const [status, setStatus] = useState('กำลังเปิดกล้อง...')
-  const scannerRef = useRef<Html5Qrcode | null>(null)
-  const scannedRef = useRef(false)
+  const [status, setStatus] = useState('ถ่ายรูปบาร์โค้ดหรือเลือกจากไฟล์')
+  const [processing, setProcessing] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    const scannerId = 'barcode-scanner-container'
-    let mounted = true
+  const processImage = async (file: File) => {
+    setProcessing(true)
+    setStatus('กำลังอ่านบาร์โค้ด...')
 
-    const startScanner = async () => {
-      try {
-        // ตรวจสอบว่ามีกล้องไหม
-        const devices = await Html5Qrcode.getCameras()
-        if (!devices || devices.length === 0) {
-          setError('ไม่พบกล้องในเครื่องนี้')
-          return
-        }
+    try {
+      const scanner = new Html5Qrcode('barcode-reader-hidden', {
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.ITF,
+        ],
+        verbose: false,
+      })
 
-        if (!mounted) return
-
-        const scanner = new Html5Qrcode(scannerId, {
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.CODE_93,
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.ITF,
-          ],
-          verbose: false,
-        })
-        scannerRef.current = scanner
-
-        // ใช้ facingMode environment (กล้องหลัง) สำหรับมือถือ
-        // ถ้าเป็นคอม จะใช้กล้องตัวแรก
-        const cameraConfig = devices.length > 0 && devices[devices.length - 1].id
-          ? { deviceId: devices[devices.length - 1].id }
-          : { facingMode: 'environment' }
-
-        await scanner.start(
-          cameraConfig,
-          {
-            fps: 15,
-            qrbox: undefined,  // สแกนทั้งภาพ ไม่จำกัดกรอบ
-            aspectRatio: 1.0,
-            disableFlip: false,
-          },
-          (decodedText) => {
-            if (scannedRef.current) return
-            scannedRef.current = true
-            setStatus(`✓ อ่านได้: ${decodedText}`)
-            // vibrate ถ้ารองรับ
-            if ('vibrate' in navigator) navigator.vibrate(100)
-            onScan(decodedText)
-            scanner.stop().catch(() => {})
-          },
-          () => {}
-        )
-        setStatus('📷 เล็งบาร์โค้ดให้อยู่กลางภาพ วางแนวนอน')
-      } catch (err: any) {
-        console.error('Scanner error:', err)
-        setError('ไม่สามารถเปิดกล้องได้: ' + (err.message || 'unknown'))
-      }
+      const result = await scanner.scanFile(file, true)
+      setStatus(`✅ อ่านได้: ${result}`)
+      if ('vibrate' in navigator) navigator.vibrate(100)
+      onScan(result)
+    } catch (err) {
+      setStatus('❌ อ่านบาร์โค้ดไม่ได้ ลองถ่ายใหม่ให้ชัดขึ้น')
+      setProcessing(false)
     }
+  }
 
-    startScanner()
-
-    return () => {
-      mounted = false
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {})
-      }
-    }
-  }, [onScan])
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processImage(file)
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md p-4" onClick={(e) => e.stopPropagation()}>
-        <div className="text-center mb-3">
-          <h3 className="text-lg font-bold text-gray-800">📷 สแกนบาร์โค้ดด้วยกล้อง</h3>
-          <p className="text-sm text-gray-500">{status}</p>
+      <div className="bg-white rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="text-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800">📷 สแกนบาร์โค้ด</h3>
+          <p className="text-sm text-gray-500 mt-1">{status}</p>
         </div>
 
-        <div className="relative rounded-xl overflow-hidden bg-black mb-3" style={{ minHeight: 300 }}>
-          <div id="barcode-scanner-container" style={{ width: '100%' }} />
-        </div>
+        <div id="barcode-reader-hidden" className="hidden" />
 
-        {error && (
-          <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-3">{error}</div>
+        {!processing && (
+          <div className="space-y-3">
+            {/* ถ่ายรูปบาร์โค้ด (เปิดกล้องมือถือ) */}
+            <label className="block w-full py-6 bg-orange-50 border-2 border-orange-300 rounded-xl text-center cursor-pointer hover:bg-orange-100 transition-colors">
+              <span className="text-3xl block mb-1">📸</span>
+              <span className="text-sm font-medium text-orange-700">ถ่ายรูปบาร์โค้ด</span>
+              <span className="text-xs text-gray-500 block mt-1">เปิดกล้อง → ถ่ายรูปบาร์โค้ด</span>
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+            </label>
+
+            {/* เลือกรูปจากแกลเลอรี่ */}
+            <label className="block w-full py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-center cursor-pointer hover:bg-gray-100 transition-colors">
+              <span className="text-xl inline-block mr-2">🖼️</span>
+              <span className="text-sm text-gray-600">เลือกรูปจากแกลเลอรี่</span>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            </label>
+          </div>
         )}
 
-        <Button variant="secondary" className="w-full" onClick={onClose}>
-          ปิดกล้อง
+        {processing && (
+          <div className="text-center py-8">
+            <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto" />
+            <p className="mt-3 text-sm text-gray-500">กำลังอ่านบาร์โค้ดจากรูป...</p>
+          </div>
+        )}
+
+        <Button variant="secondary" className="w-full mt-4" onClick={onClose}>
+          ปิด
         </Button>
       </div>
     </div>
