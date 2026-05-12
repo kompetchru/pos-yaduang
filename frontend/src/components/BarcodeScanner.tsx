@@ -54,20 +54,23 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
         await scanner.start(
           cameraConfig,
           {
-            fps: 10,
-            qrbox: { width: 300, height: 150 },
-            aspectRatio: 1.7,
+            fps: 15,
+            qrbox: undefined,  // สแกนทั้งภาพ ไม่จำกัดกรอบ
+            aspectRatio: 1.0,
+            disableFlip: false,
           },
           (decodedText) => {
             if (scannedRef.current) return
             scannedRef.current = true
             setStatus(`✓ อ่านได้: ${decodedText}`)
+            // vibrate ถ้ารองรับ
+            if ('vibrate' in navigator) navigator.vibrate(100)
             onScan(decodedText)
             scanner.stop().catch(() => {})
           },
           () => {}
         )
-        setStatus('เล็งกล้องไปที่บาร์โค้ด')
+        setStatus('📷 เล็งบาร์โค้ดให้อยู่กลางภาพ วางแนวนอน')
       } catch (err: any) {
         console.error('Scanner error:', err)
         setError('ไม่สามารถเปิดกล้องได้: ' + (err.message || 'unknown'))
