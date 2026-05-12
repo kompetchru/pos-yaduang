@@ -1,8 +1,11 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import dynamic from 'next/dynamic'
+
+const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), { ssr: false })
 
 interface Props {
   categories: any[]
@@ -27,10 +30,16 @@ export default function QuickAddModal({ categories, initialBarcode = '', onClose
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [cameraActive, setCameraActive] = useState(false)
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const barcodeInputRef = useRef<HTMLInputElement>(null)
+
+  const handleBarcodeScan = useCallback((barcode: string) => {
+    setForm((prev) => ({ ...prev, barcode }))
+    setShowBarcodeScanner(false)
+  }, [])
 
   const handleChange = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -192,9 +201,9 @@ export default function QuickAddModal({ categories, initialBarcode = '', onClose
               />
               <button
                 type="button"
-                onClick={() => barcodeInputRef.current?.focus()}
-                className="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl hover:bg-orange-200 font-medium"
-              >📷 สแกน</button>
+                onClick={() => setShowBarcodeScanner(true)}
+                className="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl hover:bg-orange-200 font-medium whitespace-nowrap"
+              >📷 ถ่ายบาร์โค้ด</button>
             </div>
             {form.barcode && (
               <p className="text-xs text-green-600 mt-1">✓ บาร์โค้ด: {form.barcode}</p>
@@ -231,6 +240,14 @@ export default function QuickAddModal({ categories, initialBarcode = '', onClose
             </Button>
           </div>
         </form>
+
+        {/* Barcode Camera Scanner */}
+        {showBarcodeScanner && (
+          <BarcodeScanner
+            onScan={handleBarcodeScan}
+            onClose={() => setShowBarcodeScanner(false)}
+          />
+        )}
       </div>
     </div>
   )
