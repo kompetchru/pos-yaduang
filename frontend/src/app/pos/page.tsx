@@ -7,6 +7,7 @@ import { useCartStore, CartItem } from '@/stores/cart'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import PaymentModal from './PaymentModal'
+import QuickAddModal from '../products/QuickAddModal'
 import {
   LuSearch, LuPlus, LuMinus, LuTrash2, LuArrowLeft,
   LuPause, LuPlay, LuPercent, LuX,
@@ -21,6 +22,8 @@ export default function POSPage() {
   const [heldBills, setHeldBills] = useState<any[]>([])
   const [showHeld, setShowHeld] = useState(false)
   const [showMobileCart, setShowMobileCart] = useState(false)
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [quickAddBarcode, setQuickAddBarcode] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
 
   const cart = useCartStore()
@@ -138,8 +141,9 @@ export default function POSPage() {
                         setSearch('')
                       }
                     } else {
-                      // ไม่เจอ barcode → แจ้งเตือน ไม่เพิ่มอะไร
-                      alert(`ไม่พบสินค้าบาร์โค้ด: ${search.trim()}\nกรุณาเพิ่มสินค้านี้ในระบบก่อน`)
+                      // ไม่เจอ barcode → เปิดหน้าเพิ่มสินค้าด่วน
+                      setQuickAddBarcode(search.trim())
+                      setShowQuickAdd(true)
                       setSearch('')
                     }
                   }
@@ -188,9 +192,9 @@ export default function POSPage() {
                   className="bg-white rounded-xl border border-gray-200 p-3 text-left hover:border-orange-300 hover:shadow-md transition-all active:scale-[0.97] group"
                 >
                   <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-4xl overflow-hidden">
-                    {product.imageUrl ? (
+                    {(product.imageData || product.imageUrl) ? (
                       <img
-                        src={product.imageUrl.startsWith('http') ? product.imageUrl : `http://localhost:4000${product.imageUrl}`}
+                        src={product.imageData || (product.imageUrl?.startsWith('http') ? product.imageUrl : `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4000${product.imageUrl}`)}
                         alt={product.name}
                         className="w-full h-full object-cover rounded-lg"
                         onError={(e) => {
@@ -200,7 +204,7 @@ export default function POSPage() {
                         }}
                       />
                     ) : null}
-                    <span className={`${product.imageUrl ? 'hidden' : ''}`}>
+                    <span className={`${(product.imageData || product.imageUrl) ? 'hidden' : ''}`}>
                       {product.category?.icon || '📦'}
                     </span>
                   </div>
@@ -344,6 +348,20 @@ export default function POSPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quick Add Product Modal */}
+      {showQuickAdd && (
+        <QuickAddModal
+          categories={categories}
+          initialBarcode={quickAddBarcode}
+          onClose={() => setShowQuickAdd(false)}
+          onSaved={() => {
+            setShowQuickAdd(false)
+            // reload products
+            api.get('/products?limit=500').then((res) => setProducts(res.data.products))
+          }}
+        />
       )}
 
       {/* Payment Modal */}

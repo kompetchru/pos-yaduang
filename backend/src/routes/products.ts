@@ -145,6 +145,7 @@ router.post('/', authenticate, requireRole('OWNER', 'ADMIN'), upload.single('ima
       unit: unit || 'ชิ้น', stock: parseInt(stock) || 0, minStock: parseInt(minStock) || 5,
       unitOptions: unitOptions ? JSON.parse(unitOptions) : null,
       imageUrl: req.file ? `/uploads/products/${req.file.filename}` : null,
+      imageData: req.file ? `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString('base64')}` : null,
     },
     include: { category: true },
   })
@@ -165,7 +166,10 @@ router.put('/:id', authenticate, requireRole('OWNER', 'ADMIN'), upload.single('i
       unit, minStock: minStock ? parseInt(minStock) : undefined,
       unitOptions: unitOptions ? JSON.parse(unitOptions) : undefined,
       isActive: isActive !== undefined ? isActive === 'true' : undefined,
-      ...(req.file ? { imageUrl: `/uploads/products/${req.file.filename}` } : {}),
+      ...(req.file ? {
+        imageUrl: `/uploads/products/${req.file.filename}`,
+        imageData: `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString('base64')}`,
+      } : {}),
     },
     include: { category: true },
   })

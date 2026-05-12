@@ -45,6 +45,7 @@ model Product {
   stock       Int      @default(0)
   minStock    Int      @default(5)
   imageUrl    String?
+  imageData   String?   // base64 encoded image for cloud deploy
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
