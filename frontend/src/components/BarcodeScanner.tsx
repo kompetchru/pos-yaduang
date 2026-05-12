@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Html5Qrcode } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { Button } from '@/components/ui/button'
 
 interface Props {
@@ -10,40 +10,75 @@ interface Props {
 
 export default function BarcodeScanner({ onScan, onClose }: Props) {
   const [error, setError] = useState('')
+  const [status, setStatus] = useState('กำลังเปิดกล้อง...')
   const scannerRef = useRef<Html5Qrcode | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const scannedRef = useRef(false)
 
   useEffect(() => {
     const scannerId = 'barcode-scanner-container'
+    let mounted = true
 
     const startScanner = async () => {
       try {
-        const scanner = new Html5Qrcode(scannerId)
+        // ตรวจสอบว่ามีกล้องไหม
+        const devices = await Html5Qrcode.getCameras()
+        if (!devices || devices.length === 0) {
+          setError('ไม่พบกล้องในเครื่องนี้')
+          return
+        }
+
+        if (!mounted) return
+
+        const scanner = new Html5Qrcode(scannerId, {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.ITF,
+          ],
+          verbose: false,
+        })
         scannerRef.current = scanner
 
+        // ใช้ facingMode environment (กล้องหลัง) สำหรับมือถือ
+        // ถ้าเป็นคอม จะใช้กล้องตัวแรก
+        const cameraConfig = devices.length > 0 && devices[devices.length - 1].id
+          ? { deviceId: devices[devices.length - 1].id }
+          : { facingMode: 'environment' }
+
         await scanner.start(
-          { facingMode: 'environment' },
+          cameraConfig,
           {
             fps: 10,
-            qrbox: { width: 280, height: 150 },
-            aspectRatio: 1.5,
+            qrbox: { width: 300, height: 150 },
+            aspectRatio: 1.7,
           },
           (decodedText) => {
-            // สแกนสำเร็จ
+            if (scannedRef.current) return
+            scannedRef.current = true
+            setStatus(`✓ อ่านได้: ${decodedText}`)
             onScan(decodedText)
             scanner.stop().catch(() => {})
           },
-          () => {} // ignore errors during scanning
+          () => {}
         )
+        setStatus('เล็งกล้องไปที่บาร์โค้ด')
       } catch (err: any) {
-        setError('ไม่สามารถเปิดกล้องได้: ' + (err.message || err))
+        console.error('Scanner error:', err)
+        setError('ไม่สามารถเปิดกล้องได้: ' + (err.message || 'unknown'))
       }
     }
 
     startScanner()
 
     return () => {
-      if (scannerRef.current) {
+      mounted = false
+      if (scannerRef.current && scannerRef.current.isScanning) {
         scannerRef.current.stop().catch(() => {})
       }
     }
@@ -54,10 +89,10 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
       <div className="bg-white rounded-2xl w-full max-w-md p-4" onClick={(e) => e.stopPropagation()}>
         <div className="text-center mb-3">
           <h3 className="text-lg font-bold text-gray-800">📷 สแกนบาร์โค้ดด้วยกล้อง</h3>
-          <p className="text-sm text-gray-500">เล็งกล้องไปที่บาร์โค้ดสินค้า</p>
+          <p className="text-sm text-gray-500">{status}</p>
         </div>
 
-        <div className="relative rounded-xl overflow-hidden bg-black mb-3">
+        <div className="relative rounded-xl overflow-hidden bg-black mb-3" style={{ minHeight: 300 }}>
           <div id="barcode-scanner-container" style={{ width: '100%' }} />
         </div>
 
