@@ -16,6 +16,7 @@ import {
   LuLogOut,
   LuReceipt,
 } from 'react-icons/lu'
+import { APP_VERSION, APP_BUILD_DATE } from '@/lib/version'
 
 const menuItems = [
   { href: '/dashboard', label: 'แดชบอร์ด', icon: LuLayoutDashboard },
@@ -91,6 +92,7 @@ export default function Sidebar() {
             <LuLogOut className="w-4 h-4" />
           </button>
         </div>
+        <p className="text-[10px] text-gray-300 text-center mt-2">v{APP_VERSION} ({APP_BUILD_DATE})</p>
       </div>
     </aside>
   )

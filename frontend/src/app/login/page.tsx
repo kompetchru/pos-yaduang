@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { APP_VERSION } from '@/lib/version'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -30,6 +31,7 @@ export default function LoginPage() {
           <div className="text-6xl mb-4">🏪</div>
           <h1 className="text-3xl font-bold text-gray-800">ร้านชำยายด้วง</h1>
           <p className="text-gray-500 mt-2">ระบบขายหน้าร้าน POS</p>
+          <p className="text-xs text-gray-300 mt-1">v{APP_VERSION}</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
