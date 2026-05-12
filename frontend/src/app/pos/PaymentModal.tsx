@@ -34,6 +34,7 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
   const [change, setChange] = useState(0)
   const [qrImage, setQrImage] = useState('')
   const [promptPayId, setPromptPayId] = useState('')
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
 
   const paid = parseFloat(amountPaid) || 0
   const currentChange = paid - total
@@ -186,11 +187,33 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
         {method === 'QR_PROMPTPAY' && (
           <div className="mb-4 text-center">
             {qrImage ? (
-              <div className="bg-white border-2 border-purple-200 rounded-xl p-4 inline-block">
-                <p className="text-sm text-purple-700 font-medium mb-2">สแกน QR เพื่อชำระ</p>
-                <img src={qrImage} alt="PromptPay QR" className="w-56 h-56 mx-auto" />
-                <p className="text-2xl font-bold text-purple-700 mt-3">{formatCurrency(total)}</p>
-                <p className="text-xs text-gray-500 mt-1">PromptPay: {promptPayId}</p>
+              <div className="bg-white border-2 border-purple-200 rounded-xl p-4">
+                {!paymentConfirmed ? (
+                  <>
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                      <p className="text-sm text-yellow-700 font-medium">รอลูกค้าชำระเงิน...</p>
+                    </div>
+                    <img src={qrImage} alt="PromptPay QR" className="w-56 h-56 mx-auto" />
+                    <p className="text-2xl font-bold text-purple-700 mt-3">{formatCurrency(total)}</p>
+                    <p className="text-xs text-gray-500 mt-1">PromptPay: {promptPayId}</p>
+                    <button
+                      onClick={() => setPaymentConfirmed(true)}
+                      className="mt-4 w-full py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
+                    >
+                      ✓ ลูกค้าชำระแล้ว
+                    </button>
+                    <p className="text-xs text-gray-400 mt-2">เช็คแอปธนาคารว่าเงินเข้าแล้ว แล้วกดยืนยัน</p>
+                  </>
+                ) : (
+                  <div className="py-4">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <LuCheck className="w-8 h-8 text-green-600" />
+                    </div>
+                    <p className="text-lg font-bold text-green-700">ชำระเงินแล้ว ✓</p>
+                    <p className="text-sm text-gray-500 mt-1">{formatCurrency(total)} ผ่าน PromptPay</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-yellow-50 rounded-xl p-4">
@@ -221,9 +244,9 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
             size="lg"
             className="flex-[2]"
             onClick={handlePay}
-            disabled={processing || (method === 'CASH' && paid < total)}
+            disabled={processing || (method === 'CASH' && paid < total) || (method === 'QR_PROMPTPAY' && !paymentConfirmed)}
           >
-            {processing ? 'กำลังบันทึก...' : 'ยืนยันชำระเงิน'}
+            {processing ? 'กำลังบันทึก...' : method === 'QR_PROMPTPAY' && !paymentConfirmed ? 'รอลูกค้าชำระ...' : 'ยืนยันชำระเงิน'}
           </Button>
         </div>
       </div>
