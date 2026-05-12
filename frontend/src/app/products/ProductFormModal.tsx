@@ -52,11 +52,14 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: 640, height: 480 },
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
       })
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        videoRef.current.play()
+        videoRef.current.setAttribute('playsinline', 'true')
+        videoRef.current.setAttribute('autoplay', 'true')
+        videoRef.current.muted = true
+        await videoRef.current.play()
       }
       setCameraActive(true)
     } catch {
@@ -150,7 +153,7 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
           <label className="text-sm font-medium text-gray-700 mb-2 block">📸 รูปสินค้า</label>
           {cameraActive ? (
             <div>
-              <video ref={videoRef} className="w-full rounded-xl bg-black" autoPlay playsInline muted />
+              <video ref={videoRef} className="w-full rounded-xl bg-black" autoPlay playsInline muted style={{ minHeight: '200px' }} />
               <div className="flex gap-2 mt-2">
                 <Button type="button" onClick={capturePhoto} className="flex-1">📸 ถ่ายรูป</Button>
                 <Button type="button" variant="secondary" onClick={stopCamera}>ยกเลิก</Button>
