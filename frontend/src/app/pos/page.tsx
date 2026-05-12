@@ -124,28 +124,23 @@ export default function POSPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && search.trim()) {
-                    // สแกนบาร์โค้ด → หาสินค้าที่ barcode ตรง → เพิ่มลงตะกร้าทันที
+                    e.preventDefault()
+                    // สแกนบาร์โค้ด → หาสินค้าที่ barcode/sku ตรง 100% เท่านั้น
                     const exactMatch = products.find(
-                      (p) => p.barcode === search.trim() || p.sku === search.trim()
+                      (p) => p.barcode === search.trim() || p.sku === search.trim().toUpperCase()
                     )
-                    if (exactMatch && exactMatch.stock > 0) {
-                      cart.addItem(exactMatch)
+                    if (exactMatch) {
+                      if (exactMatch.stock > 0) {
+                        cart.addItem(exactMatch)
+                        setSearch('')
+                      } else {
+                        alert(`สินค้า "${exactMatch.name}" หมดสต๊อก`)
+                        setSearch('')
+                      }
+                    } else {
+                      // ไม่เจอ barcode → แจ้งเตือน ไม่เพิ่มอะไร
+                      alert(`ไม่พบสินค้าบาร์โค้ด: ${search.trim()}\nกรุณาเพิ่มสินค้านี้ในระบบก่อน`)
                       setSearch('')
-                      e.preventDefault()
-                      return
-                    }
-                    // ถ้าไม่เจอ barcode ตรง แต่ค้นหาเจอ 1 ตัว → เพิ่มเลย
-                    const searchResults = products.filter((p) => {
-                      return (
-                        p.name.toLowerCase().includes(search.toLowerCase()) ||
-                        p.sku.toLowerCase().includes(search.toLowerCase()) ||
-                        p.barcode?.includes(search)
-                      ) && p.stock > 0
-                    })
-                    if (searchResults.length === 1) {
-                      cart.addItem(searchResults[0])
-                      setSearch('')
-                      e.preventDefault()
                     }
                   }
                 }}
