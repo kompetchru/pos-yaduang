@@ -177,6 +177,18 @@ router.put('/:id', authenticate, requireRole('OWNER', 'ADMIN'), upload.single('i
   return res.json(product)
 })
 
+// POST /api/products/:id/favorite — toggle favorite
+router.post('/:id/favorite', authenticate, async (req: AuthRequest, res: Response) => {
+  const product = await prisma.product.findUnique({ where: { id: req.params.id } })
+  if (!product) return res.status(404).json({ message: 'ไม่พบสินค้า' })
+
+  const updated = await prisma.product.update({
+    where: { id: req.params.id },
+    data: { isFavorite: !product.isFavorite },
+  })
+  return res.json(updated)
+})
+
 // DELETE /api/products/:id (soft delete)
 router.delete('/:id', authenticate, requireRole('OWNER', 'ADMIN'), async (req: AuthRequest, res: Response) => {
   await prisma.product.update({ where: { id: req.params.id }, data: { isActive: false } })

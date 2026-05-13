@@ -56,6 +56,9 @@ export default function POSPage() {
     return () => window.removeEventListener('keydown', handler)
   }, [cart.items.length])
 
+  // สินค้าปักหมุด (ปุ่มลัด)
+  const favorites = products.filter((p) => p.isFavorite).slice(0, 10)
+
   // กรองสินค้า
   const filtered = products.filter((p) => {
     const matchSearch = !search ||
@@ -158,6 +161,27 @@ export default function POSPage() {
               )}
             </div>
           </div>
+
+          {/* Favorite Shortcuts */}
+          {favorites.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-gray-400 mb-1 px-1">⭐ ปุ่มลัด (สินค้าปักหมุด)</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {favorites.map((fav) => (
+                  <button
+                    key={fav.id}
+                    onClick={() => cart.addItem(fav)}
+                    disabled={fav.stock <= 0}
+                    className="flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-xl hover:shadow-md active:scale-95 transition-all disabled:opacity-40 min-w-[80px]"
+                  >
+                    <span className="text-lg leading-none">{fav.category?.icon || '⭐'}</span>
+                    <span className="text-xs font-medium text-center line-clamp-2 leading-tight">{fav.name}</span>
+                    <span className="text-xs font-bold">฿{parseFloat(fav.sellPrice).toFixed(0)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Categories */}
           <div className="flex gap-2 mb-3 overflow-x-auto pb-1">

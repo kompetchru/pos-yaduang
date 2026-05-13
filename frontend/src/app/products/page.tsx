@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import ProductFormModal from './ProductFormModal'
-import { LuPlus, LuSearch, LuPencil, LuTrash2, LuTriangleAlert } from 'react-icons/lu'
+import { LuPlus, LuSearch, LuPencil, LuTrash2, LuTriangleAlert, LuStar } from 'react-icons/lu'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([])
@@ -132,6 +132,16 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={async () => {
+                          await api.post(`/products/${p.id}/favorite`)
+                          loadProducts()
+                        }}
+                        className={`p-2 rounded-lg hover:bg-yellow-50 ${p.isFavorite ? 'text-yellow-500' : 'text-gray-300'}`}
+                        title={p.isFavorite ? 'ยกเลิกปักหมุด' : 'ปักหมุด (แสดงเป็นปุ่มลัดหน้า POS)'}
+                      >
+                        <LuStar className={`w-4 h-4 ${p.isFavorite ? 'fill-yellow-500' : ''}`} />
+                      </button>
                       <button
                         onClick={() => { setEditProduct(p); setShowForm(true) }}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
