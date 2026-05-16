@@ -177,6 +177,30 @@ router.put('/:id', authenticate, requireRole('OWNER', 'ADMIN'), upload.single('i
   return res.json(product)
 })
 
+// POST /api/products/:id/image — อัพรูปสินค้าอย่างเดียว (สำหรับถ่ายรูปด่วนจากตาราง)
+router.post('/:id/image', authenticate, requireRole('OWNER', 'ADMIN'), upload.single('image'), async (req: AuthRequest, res: Response) => {
+  if (!req.file) return res.status(400).json({ message: 'กรุณาแนบรูปภาพ' })
+  const product = await prisma.product.update({
+    where: { id: req.params.id },
+    data: {
+      imageUrl: `/uploads/products/${req.file.filename}`,
+      imageData: `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString('base64')}`,
+    },
+    include: { category: true },
+  })
+  return res.json(product)
+})
+
+// DELETE /api/products/:id/image — ลบรูปสินค้า
+router.delete('/:id/image', authenticate, requireRole('OWNER', 'ADMIN'), async (req: AuthRequest, res: Response) => {
+  const product = await prisma.product.update({
+    where: { id: req.params.id },
+    data: { imageUrl: null, imageData: null },
+    include: { category: true },
+  })
+  return res.json(product)
+})
+
 // POST /api/products/:id/favorite — toggle favorite
 router.post('/:id/favorite', authenticate, async (req: AuthRequest, res: Response) => {
   const product = await prisma.product.findUnique({ where: { id: req.params.id } })
