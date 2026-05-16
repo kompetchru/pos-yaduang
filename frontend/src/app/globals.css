@@ -37,3 +37,55 @@ body {
   border-radius: 4px;
   color: #6b7280;
 }
+
+/* POS responsive layout — sidebar shown by default, bottom-bar only on phones */
+.pos-body {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.pos-cart-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 14rem;
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
+}
+.pos-cart-mobilebar { display: none; }
+.pos-cart-mobilebar-overlay { display: none; }
+.pos-grid-pad-bottom { padding-bottom: 0; }
+
+@media (min-width: 768px)  { .pos-cart-sidebar { width: 18rem; } }
+@media (min-width: 1024px) { .pos-cart-sidebar { width: 22rem; } }
+@media (min-width: 1280px) { .pos-cart-sidebar { width: 24rem; } }
+
+/* Phone screens (narrow): stack vertically with mobile bottom bar */
+@media (max-width: 519px) {
+  .pos-body { flex-direction: column; }
+  .pos-cart-sidebar { display: none; }
+  .pos-cart-mobilebar { display: block; }
+  .pos-cart-mobilebar-overlay { display: block; }
+  .pos-grid-pad-bottom { padding-bottom: 4rem; }
+}
+
+/* POS product grid — auto-fill so cards stay compact at any width */
+.pos-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.5rem;
+}
+@media (min-width: 640px) {
+  .pos-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+    gap: 0.625rem;
+  }
+}
+@media (min-width: 1024px) {
+  .pos-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+}

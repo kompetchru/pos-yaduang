@@ -157,9 +157,9 @@ export default function POSPage() {
         </span>
       </div>
 
-      <div className="flex-1 flex overflow-hidden flex-col md:flex-row">
+      <div className="pos-body">
         {/* Left: Product Grid */}
-        <div className="flex-1 flex flex-col p-3 md:p-4 overflow-hidden">
+        <div className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden min-w-0">
           {/* Search */}
           <div className="flex gap-2 mb-3">
             <div className="relative flex-1">
@@ -263,15 +263,15 @@ export default function POSPage() {
           </div>
 
           {/* Product Grid */}
-          <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+          <div className="flex-1 overflow-y-auto pos-grid-pad-bottom">
+            <div className="pos-product-grid">
               {filtered.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => cart.addItem(product)}
-                  className="bg-white rounded-xl border border-gray-200 p-3 text-left hover:border-orange-300 hover:shadow-md transition-all active:scale-[0.97] group"
+                  className="bg-white rounded-xl border border-gray-200 p-2 text-left hover:border-orange-300 hover:shadow-md transition-all active:scale-[0.97] group"
                 >
-                  <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-4xl overflow-hidden">
+                  <div className="w-full aspect-square bg-gray-100 rounded-lg mb-1.5 flex items-center justify-center text-2xl sm:text-3xl overflow-hidden">
                     {(product.imageData || product.imageUrl) ? (
                       <img
                         src={product.imageData || (product.imageUrl?.startsWith('http') ? product.imageUrl : `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4000${product.imageUrl}`)}
@@ -288,12 +288,12 @@ export default function POSPage() {
                       {product.category?.icon || '📦'}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-gray-800 truncate">{product.name}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-base font-bold text-orange-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-800 truncate leading-tight">{product.name}</p>
+                  <div className="flex items-center justify-between mt-1 gap-1">
+                    <span className="text-sm sm:text-base font-bold text-orange-600">
                       ฿{parseFloat(product.sellPrice).toFixed(0)}
                     </span>
-                    <span className="text-xs text-gray-400">เหลือ {product.stock}</span>
+                    <span className="text-[10px] sm:text-xs text-gray-400 whitespace-nowrap">เหลือ {product.stock}</span>
                   </div>
                 </button>
               ))}
@@ -307,8 +307,8 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* Right: Cart — desktop sidebar / mobile bottom */}
-        <div className="hidden md:flex w-96 bg-white border-l flex-col">
+        {/* Right: Cart — sidebar on >=480px, bottom bar otherwise */}
+        <div className="pos-cart-sidebar">
           <div className="p-4 border-b flex items-center justify-between">
             <h2 className="font-bold text-gray-800">🛒 ตะกร้า ({cart.items.length})</h2>
             <div className="flex gap-1">
@@ -388,7 +388,7 @@ export default function POSPage() {
       </div>
 
       {/* Mobile Cart Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-30">
+      <div className="pos-cart-mobilebar fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-30">
         <button
           onClick={() => cart.items.length > 0 && setShowMobileCart(true)}
           className="w-full flex items-center justify-between px-4 py-3"
@@ -403,7 +403,7 @@ export default function POSPage() {
 
       {/* Mobile Cart Overlay */}
       {showMobileCart && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setShowMobileCart(false)}>
+        <div className="pos-cart-mobilebar-overlay fixed inset-0 bg-black/50 z-40" onClick={() => setShowMobileCart(false)}>
           <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b flex items-center justify-between">
               <h2 className="font-bold text-gray-800">🛒 ตะกร้า ({cart.items.length})</h2>
