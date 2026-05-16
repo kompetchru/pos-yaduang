@@ -129,7 +129,19 @@ export default function POSPage() {
                 enterKeyHint="search"
                 placeholder="ค้นหาสินค้า / สแกนบาร์โค้ด..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  // แปลงภาษาไทยที่ยิงจากสแกนเนอร์กลับเป็นตัวเลข
+                  const thaiToNum: Record<string, string> = {
+                    'ๅ':'1','/':'2','-':'3','ภ':'4','ถ':'5','ุ':'6','ึ':'7','ค':'8','ต':'9','จ':'0',
+                    '๑':'1','๒':'2','๓':'3','๔':'4','๕':'5','๖':'6','๗':'7','๘':'8','๙':'9','๐':'0',
+                  }
+                  let val = e.target.value
+                  // ถ้ามีตัวอักษรไทยปนอยู่ในสิ่งที่ควรเป็นตัวเลข → แปลง
+                  if (/[ๅ\/\-ภถุึคตจ๑๒๓๔๕๖๗๘๙๐]/.test(val) && !/[ก-ฮเแโใไ]/.test(val.replace(/[ๅ\/\-ภถุึคตจ]/g, ''))) {
+                    val = val.split('').map(c => thaiToNum[c] || c).join('')
+                  }
+                  setSearch(val)
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && search.trim()) {
                     e.preventDefault()
