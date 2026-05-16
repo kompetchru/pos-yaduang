@@ -45,16 +45,58 @@ export default function POSPage() {
 
   useEffect(() => { loadHeldBills() }, [loadHeldBills])
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts + Global barcode scanner listener
+  const barcodeBuffer = useRef('')
+  const barcodeTimer = useRef<NodeJS.Timeout | null>(null)
+
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'F2') { e.preventDefault(); searchRef.current?.focus() }
-      if (e.key === 'F9') { e.preventDefault(); if (cart.items.length > 0) setShowPayment(true) }
-      if (e.key === 'Escape') { setShowPayment(false); setShowHeld(false) }
+    const thaiToNum: Record<string, string> = {
+      'ๅ':'1','/':'2','-':'3','ภ':'4','ถ':'5','ุ':'6','ึ':'7','ค':'8','ต':'9','จ':'0',
     }
+
+    const handler = (e: KeyboardEvent) => {
+      // F-keys
+      if (e.key === 'F2') { e.preventDefault(); searchRef.current?.focus(); return }
+      if (e.key === 'F9') { e.preventDefault(); if (cart.items.length > 0) setShowPayment(true); return }
+      if (e.key === 'Escape') { setShowPayment(false); setShowHeld(false); return }
+
+      // ถ้า focus อยู่ใน input อื่น (ไม่ใช่ search) → ไม่จับ
+      const active = document.activeElement
+      const isInInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')
+      if (isInInput && active !== searchRef.current) return
+
+      // จับ barcode scan: ตัวอักษร/ตัวเลขที่พิมพ์เร็ว + จบด้วย Enter
+      if (e.key === 'Enter' && barcodeBuffer.current.length >= 4) {
+        e.preventDefault()
+        let barcode = barcodeBuffer.current
+        // แปลงภาษาไทยเป็นตัวเลข
+        barcode = barcode.split('').map(c => thaiToNum[c] || c).join('')
+        barcodeBuffer.current = ''
+
+        // หาสินค้า
+        const match = products.find(p => p.barcode === barcode || p.sku === barcode.toUpperCase())
+        if (match) {
+          if (match.stock > 0) cart.addItem(match)
+          else alert(`สินค้า "${match.name}" หมดสต๊อก`)
+        } else {
+          setQuickAddBarcode(barcode)
+          setShowQuickAdd(true)
+        }
+        return
+      }
+
+      // สะสมตัวอักษร (barcode scanner พิมพ์เร็วมาก < 50ms ต่อตัว)
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (!isInInput) e.preventDefault()
+        barcodeBuffer.current += e.key
+        if (barcodeTimer.current) clearTimeout(barcodeTimer.current)
+        barcodeTimer.current = setTimeout(() => { barcodeBuffer.current = '' }, 200)
+      }
+    }
+
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [cart.items.length])
+  }, [cart, products, setShowPayment, setShowHeld, setShowQuickAdd, setQuickAddBarcode])
 
   // สินค้าปักหมุด (ปุ่มลัด)
   const favorites = products.filter((p) => p.isFavorite).slice(0, 10)
