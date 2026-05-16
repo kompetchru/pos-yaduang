@@ -125,6 +125,8 @@ export default function POSPage() {
               <input
                 ref={searchRef}
                 type="text"
+                inputMode="search"
+                enterKeyHint="search"
                 placeholder="ค้นหาสินค้า / สแกนบาร์โค้ด..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
