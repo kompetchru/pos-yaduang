@@ -1,10 +1,10 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import api from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { useCartStore } from '@/stores/cart'
 import { Button } from '@/components/ui/button'
-import { LuBanknote, LuQrCode, LuCheck } from 'react-icons/lu'
+import { LuBanknote, LuQrCode, LuCheck, LuDelete, LuX } from 'react-icons/lu'
 import generatePayload from 'promptpay-qr'
 import QRCode from 'qrcode'
 
@@ -13,11 +13,20 @@ const paymentMethods = [
   { key: 'QR_PROMPTPAY', label: 'QR PromptPay', icon: LuQrCode },
 ]
 
-const quickCash = [20, 50, 100, 500, 1000]
-
 interface Props {
   onClose: () => void
   onSuccess: () => void
+}
+
+// แนะนำเงินที่ลูกค้ามักจะให้: พอดี, ปัด 10, ปัด 100, ธนบัตรใหญ่กว่า
+function getCashSuggestions(total: number): number[] {
+  const set = new Set<number>([total])
+  if (total % 10 !== 0) set.add(Math.ceil(total / 10) * 10)
+  if (total % 100 !== 0) set.add(Math.ceil(total / 100) * 100)
+  ;[20, 50, 100, 500, 1000].forEach((b) => {
+    if (b > total) set.add(b)
+  })
+  return Array.from(set).sort((a, b) => a - b).slice(0, 5)
 }
 
 export default function PaymentModal({ onClose, onSuccess }: Props) {
@@ -25,7 +34,8 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
   const total = cart.getTotal()
 
   const [method, setMethod] = useState('CASH')
-  const [amountPaid, setAmountPaid] = useState(total.toString())
+  // ใช้ string เพื่อรองรับ '' (ยังไม่กด)
+  const [amountPaid, setAmountPaid] = useState<string>('')
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState(false)
   const [receiptNo, setReceiptNo] = useState('')
@@ -36,6 +46,9 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
 
   const paid = parseFloat(amountPaid) || 0
   const currentChange = paid - total
+  const canPay = method === 'CASH' ? paid >= total : paymentConfirmed
+
+  const suggestions = useMemo(() => getCashSuggestions(total), [total])
 
   // โหลด PromptPay ID จาก settings
   useEffect(() => {
@@ -58,8 +71,33 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
     }
   }, [method, promptPayId, total])
 
+  // กด numpad
+  const pressKey = (key: string) => {
+    if (key === 'C') {
+      setAmountPaid('')
+      return
+    }
+    if (key === 'BACK') {
+      setAmountPaid((v) => v.slice(0, -1))
+      return
+    }
+    if (key === '.') {
+      if (amountPaid.includes('.')) return
+      setAmountPaid((v) => (v === '' ? '0.' : v + '.'))
+      return
+    }
+    // ตัวเลข
+    setAmountPaid((v) => {
+      // จำกัดทศนิยม 2 ตำแหน่ง
+      if (v.includes('.') && v.split('.')[1].length >= 2) return v
+      // ถ้าเริ่มจาก 0 และยังไม่มีจุด → แทนที่
+      if (v === '0' && key !== '.') return key
+      return v + key
+    })
+  }
+
   const handlePay = async () => {
-    if (method === 'CASH' && paid < total) return
+    if (!canPay) return
     setProcessing(true)
 
     try {
@@ -93,7 +131,7 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
 
   if (success) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <LuCheck className="w-10 h-10 text-green-600" />
@@ -101,11 +139,14 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
           <h3 className="text-2xl font-bold text-gray-800 mb-2">ชำระเงินสำเร็จ!</h3>
           <p className="text-gray-500 mb-1">เลขที่บิล: {receiptNo}</p>
           {change > 0 && (
-            <p className="text-3xl font-bold text-orange-600 my-4">
-              เงินทอน {formatCurrency(change)}
-            </p>
+            <div className="bg-orange-50 rounded-xl py-4 my-4">
+              <p className="text-sm text-gray-500">เงินทอน</p>
+              <p className="text-4xl font-bold text-orange-600">
+                {formatCurrency(change)}
+              </p>
+            </div>
           )}
-          <Button size="xl" className="w-full mt-4" onClick={onSuccess}>
+          <Button size="xl" className="w-full mt-2" onClick={onSuccess}>
             ขายต่อ
           </Button>
         </div>
@@ -114,130 +155,244 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-xl font-bold text-gray-800 mb-4">💰 ชำระเงิน</h3>
-
-        {/* Total */}
-        <div className="bg-orange-50 rounded-xl p-4 mb-4 text-center">
-          <p className="text-sm text-gray-500">ยอดที่ต้องชำระ</p>
-          <p className="text-4xl font-bold text-orange-600">{formatCurrency(total)}</p>
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-md max-h-[95vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+          <h3 className="text-xl font-bold text-gray-800">💰 ชำระเงิน</h3>
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
+            aria-label="ปิด"
+          >
+            <LuX className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Payment Method */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {paymentMethods.map((pm) => (
-            <button
-              key={pm.key}
-              onClick={() => {
-                setMethod(pm.key)
-                if (pm.key !== 'CASH') setAmountPaid(total.toString())
-              }}
-              className={`p-3 rounded-xl border-2 text-center transition-all ${
-                method === pm.key
-                  ? 'border-orange-400 bg-orange-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <pm.icon className={`w-6 h-6 mx-auto mb-1 ${method === pm.key ? 'text-orange-600' : 'text-gray-500'}`} />
-              <p className="text-xs font-medium">{pm.label}</p>
-            </button>
-          ))}
-        </div>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 pb-3">
+          {/* Total */}
+          <div className="bg-orange-50 rounded-xl p-3 mb-3 text-center">
+            <p className="text-xs text-gray-500">ยอดที่ต้องชำระ</p>
+            <p className="text-3xl font-bold text-orange-600 leading-tight">
+              {formatCurrency(total)}
+            </p>
+          </div>
 
-        {/* Cash Input */}
-        {method === 'CASH' && (
-          <>
-            <div className="mb-3">
-              <label className="text-sm text-gray-600 mb-1 block">รับเงิน</label>
-              <input
-                type="number"
-                value={amountPaid}
-                onChange={(e) => setAmountPaid(e.target.value)}
-                className="w-full text-center text-3xl font-bold py-4 rounded-xl border-2 border-gray-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
-                autoFocus
-              />
-            </div>
-
-            <div className="flex gap-2 mb-4">
-              <button onClick={() => setAmountPaid(total.toString())}
-                className="flex-1 py-2 rounded-lg bg-orange-100 text-orange-700 font-medium text-sm hover:bg-orange-200">
-                พอดี
+          {/* Payment Method */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {paymentMethods.map((pm) => (
+              <button
+                key={pm.key}
+                onClick={() => {
+                  setMethod(pm.key)
+                  if (pm.key !== 'CASH') setAmountPaid(total.toString())
+                  else setAmountPaid('')
+                  setPaymentConfirmed(false)
+                }}
+                className={`p-2.5 rounded-xl border-2 text-center transition-all ${
+                  method === pm.key
+                    ? 'border-orange-400 bg-orange-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <pm.icon
+                  className={`w-5 h-5 mx-auto mb-0.5 ${
+                    method === pm.key ? 'text-orange-600' : 'text-gray-500'
+                  }`}
+                />
+                <p className="text-xs font-medium">{pm.label}</p>
               </button>
-              {quickCash.filter((v) => v >= total).slice(0, 4).map((v) => (
-                <button key={v} onClick={() => setAmountPaid(v.toString())}
-                  className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium text-sm hover:bg-gray-200">
-                  ฿{v}
-                </button>
-              ))}
-            </div>
+            ))}
+          </div>
 
-            {paid >= total && (
-              <div className="bg-green-50 rounded-xl p-3 mb-4 text-center">
-                <p className="text-sm text-gray-500">เงินทอน</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(currentChange)}</p>
+          {/* Cash Mode */}
+          {method === 'CASH' && (
+            <>
+              {/* Amount paid display */}
+              <div className="mb-2">
+                <p className="text-xs text-gray-500 mb-1">รับเงิน</p>
+                <div
+                  className={`w-full text-center text-3xl font-bold py-3 rounded-xl border-2 ${
+                    paid >= total && paid > 0
+                      ? 'border-green-400 bg-green-50 text-green-700'
+                      : amountPaid === ''
+                      ? 'border-gray-200 bg-gray-50 text-gray-300'
+                      : 'border-orange-400 bg-orange-50 text-orange-700'
+                  }`}
+                >
+                  {amountPaid === '' ? '0' : amountPaid}
+                </div>
               </div>
-            )}
-          </>
-        )}
 
-        {/* QR PromptPay */}
-        {method === 'QR_PROMPTPAY' && (
-          <div className="mb-4 text-center">
-            {qrImage ? (
-              <div className="bg-white border-2 border-purple-200 rounded-xl p-4">
-                {!paymentConfirmed ? (
-                  <>
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
-                      <p className="text-sm text-yellow-700 font-medium">รอลูกค้าชำระเงิน...</p>
-                    </div>
-                    <img src={qrImage} alt="PromptPay QR" className="w-56 h-56 mx-auto" />
-                    <p className="text-2xl font-bold text-purple-700 mt-3">{formatCurrency(total)}</p>
-                    <p className="text-xs text-gray-500 mt-1">PromptPay: {promptPayId}</p>
-                    <button
-                      onClick={() => setPaymentConfirmed(true)}
-                      className="mt-4 w-full py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
-                    >
-                      ✓ ลูกค้าชำระแล้ว
-                    </button>
-                    <p className="text-xs text-gray-400 mt-2">เช็คแอปธนาคารว่าเงินเข้าแล้ว แล้วกดยืนยัน</p>
-                  </>
-                ) : (
-                  <div className="py-4">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <LuCheck className="w-8 h-8 text-green-600" />
-                    </div>
-                    <p className="text-lg font-bold text-green-700">ชำระเงินแล้ว ✓</p>
-                    <p className="text-sm text-gray-500 mt-1">{formatCurrency(total)} ผ่าน PromptPay</p>
-                  </div>
-                )}
+              {/* Smart suggestions */}
+              <div className="grid grid-cols-5 gap-1.5 mb-3">
+                {suggestions.map((v, idx) => (
+                  <button
+                    key={v}
+                    onClick={() => setAmountPaid(v.toString())}
+                    className={`py-2 rounded-lg font-medium text-sm transition-colors ${
+                      idx === 0
+                        ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    } ${paid === v ? 'ring-2 ring-orange-400' : ''}`}
+                  >
+                    {idx === 0 ? 'พอดี' : `฿${v >= 1000 ? `${v / 1000}k` : v}`}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div className="bg-yellow-50 rounded-xl p-4">
-                <p className="text-sm text-yellow-700">
-                  {promptPayId ? 'กำลังสร้าง QR...' : '⚠️ ยังไม่ได้ตั้งค่า PromptPay ID — ไปตั้งค่าที่เมนู "ตั้งค่า"'}
+
+              {/* Change display (always visible) */}
+              <div
+                className={`rounded-xl p-2.5 mb-3 text-center ${
+                  paid >= total && paid > 0
+                    ? 'bg-green-50'
+                    : 'bg-gray-50'
+                }`}
+              >
+                <p className="text-xs text-gray-500">เงินทอน</p>
+                <p
+                  className={`text-2xl font-bold ${
+                    paid >= total && paid > 0 ? 'text-green-600' : 'text-gray-300'
+                  }`}
+                >
+                  {paid >= total ? formatCurrency(currentChange) : '฿0'}
                 </p>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <Button variant="secondary" size="lg" className="flex-1" onClick={onClose}>
+              {/* Numpad */}
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+                  <NumpadKey key={d} onClick={() => pressKey(d)}>
+                    {d}
+                  </NumpadKey>
+                ))}
+                <NumpadKey onClick={() => pressKey('C')} variant="muted">
+                  C
+                </NumpadKey>
+                <NumpadKey onClick={() => pressKey('0')}>0</NumpadKey>
+                <NumpadKey onClick={() => pressKey('BACK')} variant="muted">
+                  <LuDelete className="w-5 h-5 mx-auto" />
+                </NumpadKey>
+              </div>
+            </>
+          )}
+
+          {/* QR PromptPay */}
+          {method === 'QR_PROMPTPAY' && (
+            <div className="mb-3 text-center">
+              {qrImage ? (
+                <div className="bg-white border-2 border-purple-200 rounded-xl p-4">
+                  {!paymentConfirmed ? (
+                    <>
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                        <p className="text-sm text-yellow-700 font-medium">
+                          รอลูกค้าชำระเงิน...
+                        </p>
+                      </div>
+                      <img
+                        src={qrImage}
+                        alt="PromptPay QR"
+                        className="w-56 h-56 mx-auto"
+                      />
+                      <p className="text-2xl font-bold text-purple-700 mt-3">
+                        {formatCurrency(total)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PromptPay: {promptPayId}
+                      </p>
+                      <button
+                        onClick={() => setPaymentConfirmed(true)}
+                        className="mt-4 w-full py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
+                      >
+                        ✓ ลูกค้าชำระแล้ว
+                      </button>
+                      <p className="text-xs text-gray-400 mt-2">
+                        เช็คแอปธนาคารว่าเงินเข้าแล้ว แล้วกดยืนยัน
+                      </p>
+                    </>
+                  ) : (
+                    <div className="py-4">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <LuCheck className="w-8 h-8 text-green-600" />
+                      </div>
+                      <p className="text-lg font-bold text-green-700">
+                        ชำระเงินแล้ว ✓
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {formatCurrency(total)} ผ่าน PromptPay
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-yellow-50 rounded-xl p-4">
+                  <p className="text-sm text-yellow-700">
+                    {promptPayId
+                      ? 'กำลังสร้าง QR...'
+                      : '⚠️ ยังไม่ได้ตั้งค่า PromptPay ID — ไปตั้งค่าที่เมนู "ตั้งค่า"'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Sticky footer — confirm/cancel always visible */}
+        <div className="border-t bg-white p-3 flex gap-2 rounded-b-2xl">
+          <Button
+            variant="secondary"
+            size="lg"
+            className="flex-1"
+            onClick={onClose}
+            disabled={processing}
+          >
             ยกเลิก
           </Button>
           <Button
             size="lg"
             className="flex-[2]"
             onClick={handlePay}
-            disabled={processing || (method === 'CASH' && paid < total) || (method === 'QR_PROMPTPAY' && !paymentConfirmed)}
+            disabled={processing || !canPay}
           >
-            {processing ? 'กำลังบันทึก...' : method === 'QR_PROMPTPAY' && !paymentConfirmed ? 'รอลูกค้าชำระ...' : 'ยืนยันชำระเงิน'}
+            {processing
+              ? 'กำลังบันทึก...'
+              : method === 'QR_PROMPTPAY' && !paymentConfirmed
+              ? 'รอลูกค้าชำระ...'
+              : 'ยืนยัน'}
           </Button>
         </div>
       </div>
     </div>
+  )
+}
+
+function NumpadKey({
+  children,
+  onClick,
+  variant = 'default',
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  variant?: 'default' | 'muted'
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`py-3 sm:py-4 rounded-xl text-xl font-bold border-2 active:scale-95 transition-all ${
+        variant === 'muted'
+          ? 'bg-gray-100 border-gray-200 text-gray-600 hover:bg-gray-200'
+          : 'bg-white border-gray-200 text-gray-800 hover:bg-orange-50 hover:border-orange-200'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
