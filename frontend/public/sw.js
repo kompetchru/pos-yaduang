@@ -1,5 +1,5 @@
 // bump this when deploying UI changes to force clients to fetch new assets
-const CACHE_NAME = 'yaduang-pos-v1.5.5'
+const CACHE_NAME = 'yaduang-pos-v1.5.6'
 
 self.addEventListener('install', (e) => {
   // activate the new SW immediately on install

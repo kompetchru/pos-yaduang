@@ -5,12 +5,10 @@ import { formatCurrency } from '@/lib/utils'
 import { useCartStore } from '@/stores/cart'
 import { Button } from '@/components/ui/button'
 import { LuBanknote, LuQrCode, LuCheck, LuDelete, LuX } from 'react-icons/lu'
-import generatePayload from 'promptpay-qr'
-import QRCode from 'qrcode'
 
 const paymentMethods = [
   { key: 'CASH', label: 'เงินสด', icon: LuBanknote },
-  { key: 'QR_PROMPTPAY', label: 'QR PromptPay', icon: LuQrCode },
+  { key: 'QR_KSHOP', label: 'K SHOP', icon: LuQrCode },
 ]
 
 interface Props {
@@ -40,8 +38,8 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
   const [success, setSuccess] = useState(false)
   const [receiptNo, setReceiptNo] = useState('')
   const [change, setChange] = useState(0)
-  const [qrImage, setQrImage] = useState('')
-  const [promptPayId, setPromptPayId] = useState('')
+  const [kshopQrImage, setKshopQrImage] = useState('')
+  const [kshopName, setKshopName] = useState('')
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
 
   const paid = parseFloat(amountPaid) || 0
@@ -50,26 +48,16 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
 
   const suggestions = useMemo(() => getCashSuggestions(total), [total])
 
-  // โหลด PromptPay ID จาก settings
+  // โหลดรูป QR K-Shop จาก settings
   useEffect(() => {
-    api.get('/settings').then((res) => {
-      setPromptPayId(res.data.promptpay_id || '')
-    }).catch(() => {})
+    api
+      .get('/settings')
+      .then((res) => {
+        setKshopQrImage(res.data.kshop_qr_image || '')
+        setKshopName(res.data.kshop_name || '')
+      })
+      .catch(() => {})
   }, [])
-
-  // สร้าง QR เมื่อเลือก PromptPay
-  useEffect(() => {
-    if (method === 'QR_PROMPTPAY' && promptPayId && total > 0) {
-      try {
-        const payload = generatePayload(promptPayId, { amount: total })
-        QRCode.toDataURL(payload, {
-          width: 300,
-          margin: 2,
-          color: { dark: '#000000', light: '#FFFFFF' },
-        }).then(setQrImage).catch(() => {})
-      } catch {}
-    }
-  }, [method, promptPayId, total])
 
   // กด numpad
   const pressKey = (key: string) => {
@@ -251,9 +239,7 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
               {/* Change display (always visible) */}
               <div
                 className={`rounded-xl p-2.5 mb-3 text-center ${
-                  paid >= total && paid > 0
-                    ? 'bg-green-50'
-                    : 'bg-gray-50'
+                  paid >= total && paid > 0 ? 'bg-green-50' : 'bg-gray-50'
                 }`}
               >
                 <p className="text-xs text-gray-500">เงินทอน</p>
@@ -284,29 +270,34 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
             </>
           )}
 
-          {/* QR PromptPay */}
-          {method === 'QR_PROMPTPAY' && (
+          {/* K SHOP Mode */}
+          {method === 'QR_KSHOP' && (
             <div className="mb-3 text-center">
-              {qrImage ? (
-                <div className="bg-white border-2 border-purple-200 rounded-xl p-4">
+              {kshopQrImage ? (
+                <div className="bg-white border-2 border-green-200 rounded-xl p-4">
                   {!paymentConfirmed ? (
                     <>
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
                         <p className="text-sm text-yellow-700 font-medium">
-                          รอลูกค้าชำระเงิน...
+                          รอลูกค้าสแกนชำระเงิน...
                         </p>
                       </div>
                       <img
-                        src={qrImage}
-                        alt="PromptPay QR"
-                        className="w-56 h-56 mx-auto"
+                        src={kshopQrImage}
+                        alt="K-Shop QR"
+                        className="w-64 h-64 mx-auto object-contain rounded-lg"
                       />
-                      <p className="text-2xl font-bold text-purple-700 mt-3">
+                      <p className="text-2xl font-bold text-green-700 mt-3">
                         {formatCurrency(total)}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        PromptPay: {promptPayId}
+                      {kshopName && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          K SHOP: {kshopName}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-400 mt-1 leading-snug">
+                        ลูกค้าเปิดแอปธนาคาร → สแกน QR → กรอกยอด {formatCurrency(total)} → โอน
                       </p>
                       <button
                         onClick={() => setPaymentConfirmed(true)}
@@ -315,7 +306,7 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
                         ✓ ลูกค้าชำระแล้ว
                       </button>
                       <p className="text-xs text-gray-400 mt-2">
-                        เช็คแอปธนาคารว่าเงินเข้าแล้ว แล้วกดยืนยัน
+                        เช็คในแอป K PLUS / K SHOP ว่าเงินเข้าแล้ว แล้วกดยืนยัน
                       </p>
                     </>
                   ) : (
@@ -327,17 +318,18 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
                         ชำระเงินแล้ว ✓
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
-                        {formatCurrency(total)} ผ่าน PromptPay
+                        {formatCurrency(total)} ผ่าน K SHOP
                       </p>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="bg-yellow-50 rounded-xl p-4">
-                  <p className="text-sm text-yellow-700">
-                    {promptPayId
-                      ? 'กำลังสร้าง QR...'
-                      : '⚠️ ยังไม่ได้ตั้งค่า PromptPay ID — ไปตั้งค่าที่เมนู "ตั้งค่า"'}
+                <div className="bg-yellow-50 rounded-xl p-4 text-left">
+                  <p className="text-sm text-yellow-700 font-medium">
+                    ⚠️ ยังไม่ได้อัพโหลดรูป QR K SHOP
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    ไปที่เมนู &quot;⚙️ ตั้งค่า&quot; → อัพโหลดรูป QR ของร้าน
                   </p>
                 </div>
               )}
@@ -364,7 +356,7 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
           >
             {processing
               ? 'กำลังบันทึก...'
-              : method === 'QR_PROMPTPAY' && !paymentConfirmed
+              : method === 'QR_KSHOP' && !paymentConfirmed
               ? 'รอลูกค้าชำระ...'
               : 'ยืนยัน'}
           </Button>
