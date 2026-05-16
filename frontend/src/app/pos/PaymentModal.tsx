@@ -8,7 +8,7 @@ import { LuBanknote, LuQrCode, LuCheck, LuDelete, LuX, LuTriangleAlert } from 'r
 
 const paymentMethods = [
   { key: 'CASH', label: 'เงินสด', icon: LuBanknote },
-  { key: 'QR_KSHOP', label: 'K SHOP', icon: LuQrCode },
+  { key: 'QR_KSHOP', label: 'QR ธนาคาร', icon: LuQrCode },
 ]
 
 interface Props {
@@ -45,7 +45,6 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
   const [change, setChange] = useState(0)
   const [kshopQrImage, setKshopQrImage] = useState('')
   const [kshopName, setKshopName] = useState('')
-
   const paid = parseFloat(amountPaid) || 0
   const currentChange = paid - total
   const kshopPaid = parseFloat(kshopAmount) || 0
@@ -313,13 +312,16 @@ export default function PaymentModal({ onClose, onSuccess }: Props) {
                       {formatCurrency(total)}
                     </p>
                     {kshopName && (
-                      <p className="text-xs text-gray-500">K SHOP: {kshopName}</p>
+                      <p className="text-xs text-gray-500">{kshopName}</p>
                     )}
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      📱 สแกนได้ทุกแอปธนาคาร (KBank / SCB / Krungsri / Bangkok Bank ฯลฯ)
+                    </p>
                   </div>
 
                   {/* Verify amount */}
                   <p className="text-xs text-gray-500 mb-1">
-                    📱 กรอกยอดที่เห็นใน SMS / K PLUS
+                    📩 กรอกยอดที่เห็นใน SMS / แอปธนาคาร
                   </p>
                   <div
                     className={`w-full text-center text-3xl font-bold py-3 rounded-xl border-2 mb-2 ${

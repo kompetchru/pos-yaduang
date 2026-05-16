@@ -35,7 +35,7 @@ export default function ReportsPage() {
   }, [])
 
   const methodLabel: Record<string, string> = {
-    CASH: 'เงินสด', TRANSFER: 'โอนเงิน', QR_KSHOP: 'K SHOP', QR_PROMPTPAY: 'QR PromptPay', CARD: 'บัตร',
+    CASH: 'เงินสด', TRANSFER: 'โอนเงิน', QR_KSHOP: 'QR ธนาคาร', QR_PROMPTPAY: 'QR PromptPay', CARD: 'บัตร',
   }
 
   if (loading) {

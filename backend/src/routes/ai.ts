@@ -72,7 +72,7 @@ router.get('/insights', authenticate, async (_req: any, res: Response) => {
 
   const mc: Record<string, number> = {}
   for (const s of sales) mc[s.paymentMethod] = (mc[s.paymentMethod] || 0) + 1
-  const ml: Record<string, string> = { CASH: 'เงินสด', TRANSFER: 'โอนเงิน', QR_KSHOP: 'K SHOP', QR_PROMPTPAY: 'QR PromptPay', CARD: 'บัตร' }
+  const ml: Record<string, string> = { CASH: 'เงินสด', TRANSFER: 'โอนเงิน', QR_KSHOP: 'QR ธนาคาร', QR_PROMPTPAY: 'QR PromptPay', CARD: 'บัตร' }
   const tm = Object.entries(mc).sort((a, b) => b[1] - a[1])[0]
   if (tm) lines.push('💳 ช่องทางชำระเงินหลัก: ' + (ml[tm[0]] || tm[0]) + ' (' + (tm[1] / sales.length * 100).toFixed(0) + '%)')
 

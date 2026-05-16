@@ -127,28 +127,28 @@ export default function SettingsPage() {
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="font-medium text-gray-800 mb-1">📱 K SHOP (KBank)</h4>
+              <h4 className="font-medium text-gray-800 mb-1">📱 QR ธนาคาร (K SHOP / Thai QR Payment)</h4>
               <p className="text-xs text-gray-500 mb-3">
-                อัพโหลดรูป QR K SHOP ของร้าน — ลูกค้าจะสแกนรูปนี้แล้วกรอกยอดเงินเอง
+                อัพโหลดรูป QR ของร้าน — รองรับทุกแอปธนาคาร (K PLUS / SCB Easy / Krungsri / Bangkok Bank ฯลฯ)
               </p>
 
               <Input
-                label="ชื่อร้านใน K SHOP (ไม่บังคับ)"
+                label="ชื่อร้าน / บัญชีที่แสดงบน QR (ไม่บังคับ)"
                 value={settings.kshop_name || ''}
                 onChange={(e) => update('kshop_name', e.target.value)}
-                placeholder="เช่น ร้านชำยายด้วง"
+                placeholder="เช่น ร้านป้าด้วง"
               />
 
               <div className="mt-3">
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  รูป QR K SHOP
+                  รูป QR ของร้าน
                 </label>
 
                 {settings.kshop_qr_image ? (
                   <div className="relative inline-block">
                     <img
                       src={settings.kshop_qr_image}
-                      alt="K-Shop QR"
+                      alt="QR ธนาคาร"
                       className="w-48 h-48 object-contain rounded-xl border-2 border-green-200 bg-white p-2"
                     />
                     <button

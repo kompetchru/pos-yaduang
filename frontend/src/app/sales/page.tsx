@@ -48,7 +48,7 @@ export default function SalesPage() {
   }
 
   const methodLabel: Record<string, string> = {
-    CASH: 'เงินสด', TRANSFER: 'โอนเงิน', QR_KSHOP: 'K SHOP', QR_PROMPTPAY: 'QR PromptPay', CARD: 'บัตร',
+    CASH: 'เงินสด', TRANSFER: 'โอนเงิน', QR_KSHOP: 'QR ธนาคาร', QR_PROMPTPAY: 'QR PromptPay', CARD: 'บัตร',
   }
   const methodColor: Record<string, 'success' | 'info' | 'default' | 'warning'> = {
     CASH: 'success', TRANSFER: 'info', QR_KSHOP: 'default', QR_PROMPTPAY: 'default', CARD: 'warning',
@@ -87,7 +87,7 @@ export default function SalesPage() {
               <option value="">ทั้งหมด</option>
               <option value="CASH">เงินสด</option>
               <option value="TRANSFER">โอนเงิน</option>
-              <option value="QR_KSHOP">K SHOP</option>
+              <option value="QR_KSHOP">QR ธนาคาร</option>
               <option value="QR_PROMPTPAY">QR PromptPay (เก่า)</option>
               <option value="CARD">บัตร</option>
             </select>
