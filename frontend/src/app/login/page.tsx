@@ -61,12 +61,6 @@ export default function LoginPage() {
               {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl text-sm text-gray-500">
-            <p className="font-medium text-gray-600 mb-1">ทดสอบเข้าสู่ระบบ:</p>
-            <p>👩‍🦳 เจ้าของร้าน: <span className="font-mono text-gray-700">yaduang / 1234</span></p>
-            <p>👨 แคชเชียร์: <span className="font-mono text-gray-700">somchai / 1234</span></p>
-          </div>
         </div>
       </div>
     </div>
