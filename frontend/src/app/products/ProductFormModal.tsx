@@ -166,7 +166,37 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Input label="หน่วยนับ" value={form.unit} onChange={(e) => handleChange('unit', e.target.value)} placeholder="ชิ้น" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">หน่วยนับ</label>
+              <select value={form.unit} onChange={(e) => handleChange('unit', e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none">
+                <option value="ชิ้น">ชิ้น</option>
+                <option value="ขวด">ขวด</option>
+                <option value="กระป๋อง">กระป๋อง</option>
+                <option value="ซอง">ซอง</option>
+                <option value="ถุง">ถุง</option>
+                <option value="กล่อง">กล่อง</option>
+                <option value="แพ็ค">แพ็ค</option>
+                <option value="ถ้วย">ถ้วย</option>
+                <option value="แท่ง">แท่ง</option>
+                <option value="อัน">อัน</option>
+                <option value="ก้อน">ก้อน</option>
+                <option value="หลอด">หลอด</option>
+                <option value="ม้วน">ม้วน</option>
+                <option value="ฟอง">ฟอง</option>
+                <option value="ลูก">ลูก</option>
+                <option value="เม็ด">เม็ด</option>
+                <option value="แผง">แผง</option>
+                <option value="คู่">คู่</option>
+                <option value="มัด">มัด</option>
+                <option value="ลัง">ลัง</option>
+                <option value="ถัง">ถัง</option>
+                <option value="กระปุก">กระปุก</option>
+                <option value="ห่อ">ห่อ</option>
+                <option value="แก้ว">แก้ว</option>
+                <option value="กิโลกรัม">กิโลกรัม</option>
+              </select>
+            </div>
             {!isEdit && <Input label="จำนวนเริ่มต้น" type="number" value={form.stock} onChange={(e) => handleChange('stock', e.target.value)} />}
             <Input label="แจ้งเตือนเมื่อเหลือ" type="number" value={form.minStock} onChange={(e) => handleChange('minStock', e.target.value)} />
           </div>
