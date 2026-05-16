@@ -1,11 +1,18 @@
 'use client'
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { LuX, LuCamera, LuImage } from 'react-icons/lu'
 import dynamic from 'next/dynamic'
 
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), { ssr: false })
+
+const COMMON_UNITS = [
+  'ชิ้น','ขวด','กระป๋อง','ซอง','ถุง','กล่อง','แพ็ค','ถ้วย','แท่ง','อัน',
+  'ก้อน','หลอด','ม้วน','ฟอง','ลูก','เม็ด','แผง','คู่','มัด','ลัง',
+  'ถัง','กระปุก','ห่อ','แก้ว','กิโลกรัม',
+]
 
 interface Props {
   categories: any[]
@@ -29,12 +36,18 @@ export default function QuickAddModal({ categories, initialBarcode = '', onClose
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [cameraActive, setCameraActive] = useState(false)
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const barcodeInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  // ถ้ามี barcode มาจากการสแกน → focus ที่ "ชื่อสินค้า" ทันที
+  useEffect(() => {
+    if (initialBarcode) {
+      const t = setTimeout(() => nameInputRef.current?.focus(), 100)
+      return () => clearTimeout(t)
+    }
+  }, [initialBarcode])
 
   const handleBarcodeScan = useCallback((barcode: string) => {
     setForm((prev) => ({ ...prev, barcode }))
@@ -45,60 +58,15 @@ export default function QuickAddModal({ categories, initialBarcode = '', onClose
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  // เปิดกล้องถ่ายรูปสินค้า
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: 640, height: 480 },
-      })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
-      }
-      setCameraActive(true)
-    } catch (err) {
-      alert('ไม่สามารถเปิดกล้องได้ ลองใช้ปุ่ม "เลือกไฟล์" แทน')
-    }
-  }
-
-  // ถ่ายรูป
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return
-    const canvas = canvasRef.current
-    const video = videoRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d')
-    ctx?.drawImage(video, 0, 0)
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], `product-${Date.now()}.jpg`, { type: 'image/jpeg' })
-        setImageFile(file)
-        setImagePreview(canvas.toDataURL('image/jpeg'))
-      }
-    }, 'image/jpeg', 0.8)
-
-    stopCamera()
-  }
-
-  // ปิดกล้อง
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
-      tracks.forEach((t) => t.stop())
-      videoRef.current.srcObject = null
-    }
-    setCameraActive(false)
-  }
-
-  // เลือกไฟล์รูป
+  // เลือกไฟล์รูป (กล้อง หรือ แกลเลอรี่)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       setImageFile(file)
       setImagePreview(URL.createObjectURL(file))
     }
+    // reset input เพื่อให้เลือกไฟล์เดิมซ้ำได้
+    e.target.value = ''
   }
 
   // บันทึก
@@ -136,110 +104,236 @@ export default function QuickAddModal({ categories, initialBarcode = '', onClose
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { stopCamera(); onClose() }}>
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-xl font-bold text-gray-800 mb-4">📸 เพิ่มสินค้าด่วน</h3>
-
-        {/* Camera / Image */}
-        <div className="mb-4">
-          {cameraActive ? (
-            <div className="relative">
-              <video ref={videoRef} className="w-full rounded-xl bg-black" autoPlay playsInline muted />
-              <div className="flex gap-2 mt-2">
-                <Button type="button" onClick={capturePhoto} className="flex-1">📸 ถ่ายรูป</Button>
-                <Button type="button" variant="secondary" onClick={stopCamera}>ยกเลิก</Button>
-              </div>
-            </div>
-          ) : imagePreview ? (
-            <div className="relative">
-              <img src={imagePreview} alt="preview" className="w-full h-48 object-cover rounded-xl" />
-              <button
-                type="button"
-                onClick={() => { setImageFile(null); setImagePreview(null) }}
-                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm"
-              >✕</button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={startCamera}
-                className="flex-1 py-8 border-2 border-dashed border-orange-300 rounded-xl text-center hover:bg-orange-50 transition-colors"
-              >
-                <span className="text-3xl block mb-1">📷</span>
-                <span className="text-sm text-gray-600">เปิดกล้องถ่ายรูป</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1 py-8 border-2 border-dashed border-gray-300 rounded-xl text-center hover:bg-gray-50 transition-colors"
-              >
-                <span className="text-3xl block mb-1">🖼️</span>
-                <span className="text-sm text-gray-600">เลือกจากไฟล์</span>
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
-            </div>
-          )}
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-md max-h-[95vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b">
+          <h3 className="text-lg font-bold text-gray-800">📸 เพิ่มสินค้าด่วน</h3>
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
+            aria-label="ปิด"
+          >
+            <LuX className="w-5 h-5" />
+          </button>
         </div>
 
-        <canvas ref={canvasRef} className="hidden" />
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Barcode */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">บาร์โค้ด</label>
-            <div className="flex gap-2">
+        {/* Scrollable body */}
+        <form
+          id="quick-add-form"
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto px-5 py-3 space-y-3"
+        >
+          {/* รูปสินค้า + บาร์โค้ด อยู่บรรทัดเดียวกัน */}
+          <div className="flex gap-3">
+            {/* รูปสินค้า — compact */}
+            <div className="w-24 flex-shrink-0">
+              <label className="text-xs text-gray-500 mb-1 block">รูปสินค้า</label>
+              {imagePreview ? (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="preview"
+                    className="w-24 h-24 object-cover rounded-xl border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setImageFile(null); setImagePreview(null) }}
+                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  >✕</button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1 w-24">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="aspect-square border-2 border-dashed border-orange-300 rounded-lg flex flex-col items-center justify-center hover:bg-orange-50"
+                    aria-label="ถ่ายรูป"
+                  >
+                    <LuCamera className="w-5 h-5 text-orange-500" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:bg-gray-50"
+                    aria-label="เลือกจากแกลเลอรี่"
+                  >
+                    <LuImage className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+              )}
               <input
-                ref={barcodeInputRef}
-                type="text"
-                value={form.barcode}
-                onChange={(e) => handleChange('barcode', e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
-                placeholder="สแกนหรือพิมพ์บาร์โค้ด"
-                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-base font-mono focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
-                autoFocus={!initialBarcode}
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileSelect}
               />
-              <button
-                type="button"
-                onClick={() => setShowBarcodeScanner(true)}
-                className="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl hover:bg-orange-200 font-medium whitespace-nowrap"
-              >📷 ถ่ายบาร์โค้ด</button>
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
             </div>
-            {form.barcode && (
-              <p className="text-xs text-green-600 mt-1">✓ บาร์โค้ด: {form.barcode}</p>
-            )}
+
+            {/* บาร์โค้ด */}
+            <div className="flex-1 min-w-0">
+              <label className="text-xs text-gray-500 mb-1 block">บาร์โค้ด</label>
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={form.barcode}
+                  onChange={(e) => handleChange('barcode', e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+                  placeholder="สแกน/พิมพ์"
+                  className="flex-1 min-w-0 rounded-xl border border-gray-300 px-3 py-2.5 text-sm font-mono focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowBarcodeScanner(true)}
+                  className="px-2.5 bg-orange-100 text-orange-700 rounded-xl hover:bg-orange-200 flex items-center"
+                  aria-label="ถ่ายบาร์โค้ด"
+                >
+                  <LuCamera className="w-4 h-4" />
+                </button>
+              </div>
+              {form.barcode && (
+                <p className="text-xs text-green-600 mt-1 truncate">✓ {form.barcode}</p>
+              )}
+            </div>
           </div>
 
-          <Input label="ชื่อสินค้า *" value={form.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="เช่น น้ำดื่มสิงห์ 600ml" />
-
+          {/* ชื่อสินค้า — เด่นที่สุด */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">หมวดหมู่ *</label>
-            <select value={form.categoryId} onChange={(e) => handleChange('categoryId', e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-orange-400 outline-none">
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-            </select>
+            <label className="text-xs text-gray-500 mb-1 block">ชื่อสินค้า *</label>
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={form.name}
+              onChange={(e) => handleChange('name', e.target.value)}
+              placeholder="เช่น น้ำดื่มสิงห์ 600ml"
+              className="w-full rounded-xl border-2 border-orange-300 px-4 py-3 text-base focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none"
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="ราคาทุน (฿)" type="number" step="0.01" value={form.costPrice} onChange={(e) => handleChange('costPrice', e.target.value)} placeholder="ไม่บังคับ" />
-            <Input label="ราคาขาย (฿) *" type="number" step="0.01" value={form.sellPrice} onChange={(e) => handleChange('sellPrice', e.target.value)} />
+          {/* ราคาขาย + ราคาทุน */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">ราคาขาย (฿) *</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={form.sellPrice}
+                onChange={(e) => handleChange('sellPrice', e.target.value)}
+                placeholder="0"
+                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-base font-bold focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">ราคาทุน (฿)</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={form.costPrice}
+                onChange={(e) => handleChange('costPrice', e.target.value)}
+                placeholder="ไม่บังคับ"
+                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-base focus:border-orange-400 outline-none"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <Input label="หน่วย" value={form.unit} onChange={(e) => handleChange('unit', e.target.value)} />
-            <Input label="จำนวน" type="number" value={form.stock} onChange={(e) => handleChange('stock', e.target.value)} />
-            <Input label="แจ้งเตือน" type="number" value={form.minStock} onChange={(e) => handleChange('minStock', e.target.value)} />
+          {/* หมวดหมู่ + หน่วย */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">หมวดหมู่ *</label>
+              <select
+                value={form.categoryId}
+                onChange={(e) => handleChange('categoryId', e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-orange-400 outline-none bg-white"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">หน่วย</label>
+              <select
+                value={form.unit}
+                onChange={(e) => handleChange('unit', e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-orange-400 outline-none bg-white"
+              >
+                {COMMON_UNITS.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>}
-
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" className="flex-1" onClick={() => { stopCamera(); onClose() }}>ยกเลิก</Button>
-            <Button type="submit" className="flex-[2]" disabled={saving}>
-              {saving ? 'กำลังบันทึก...' : '✅ บันทึกสินค้า'}
-            </Button>
+          {/* จำนวน + แจ้งเตือน */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">จำนวนเริ่มต้น</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={form.stock}
+                onChange={(e) => handleChange('stock', e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-base focus:border-orange-400 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">แจ้งเตือนเมื่อเหลือ</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={form.minStock}
+                onChange={(e) => handleChange('minStock', e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-base focus:border-orange-400 outline-none"
+              />
+            </div>
           </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 text-sm px-4 py-2.5 rounded-xl">
+              {error}
+            </div>
+          )}
         </form>
+
+        {/* Sticky footer */}
+        <div className="border-t bg-white p-3 flex gap-2 rounded-b-2xl">
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            className="flex-1"
+            onClick={onClose}
+            disabled={saving}
+          >
+            ยกเลิก
+          </Button>
+          <Button
+            type="submit"
+            form="quick-add-form"
+            size="lg"
+            className="flex-[2]"
+            disabled={saving}
+          >
+            {saving ? 'กำลังบันทึก...' : '✅ บันทึกสินค้า'}
+          </Button>
+        </div>
 
         {/* Barcode Camera Scanner */}
         {showBarcodeScanner && (
