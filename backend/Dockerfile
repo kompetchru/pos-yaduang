@@ -26,15 +26,18 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy compiled JS + prisma client + schema
+# Copy compiled JS + prisma client + schema + startup script
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/prisma ./prisma
+COPY scripts/wait-and-migrate.sh ./wait-and-migrate.sh
+RUN chmod +x ./wait-and-migrate.sh
 
 EXPOSE 4000
 
 # จำกัด heap 384MB (กัน OOM บน Render Free 512MB)
 # รัน node ตรงๆ ไม่ใช้ tsx → ลด RAM ~200MB
+# wait-and-migrate.sh: รอ Neon DB wake up ก่อนรัน prisma db push
 ENV NODE_OPTIONS="--max-old-space-size=384"
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node dist/index.js"]
+CMD ["./wait-and-migrate.sh"]
