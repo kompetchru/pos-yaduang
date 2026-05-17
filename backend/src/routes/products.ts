@@ -19,7 +19,7 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } })
 
 // GET /api/products
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
-  const { search, categoryId, lowStock, page = '1', limit = '50' } = req.query
+  const { search, categoryId, lowStock, page = '1', limit = '50', lite } = req.query
   const skip = (parseInt(page as string) - 1) * parseInt(limit as string)
 
   const where: any = { isActive: true }
@@ -32,10 +32,33 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   }
   if (categoryId) where.categoryId = categoryId
 
+  // lite=1 → ตัด imageData (base64) ออก ใช้รวมกับ /:id/image-data ดึงตามต้องการ
+  // ลด payload จาก ~30MB → ~200KB เมื่อโหลดสินค้า 300 ตัว
+  const select = lite === '1' ? {
+    id: true,
+    sku: true,
+    barcode: true,
+    name: true,
+    description: true,
+    categoryId: true,
+    costPrice: true,
+    sellPrice: true,
+    unit: true,
+    unitOptions: true,
+    stock: true,
+    minStock: true,
+    imageUrl: true,
+    isActive: true,
+    isFavorite: true,
+    createdAt: true,
+    updatedAt: true,
+    category: true,
+  } : undefined
+
   const [products, total] = await Promise.all([
     prisma.product.findMany({
       where,
-      include: { category: true },
+      ...(select ? { select } : { include: { category: true } }),
       orderBy: { name: 'asc' },
       skip,
       take: parseInt(limit as string),
@@ -44,6 +67,16 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   ])
 
   return res.json({ products, total, page: parseInt(page as string), limit: parseInt(limit as string) })
+})
+
+// GET /api/products/:id/image-data — ดึงรูป base64 ของสินค้าตัวเดียว
+router.get('/:id/image-data', authenticate, async (req: AuthRequest, res: Response) => {
+  const product = await prisma.product.findUnique({
+    where: { id: req.params.id },
+    select: { imageData: true, imageUrl: true },
+  })
+  if (!product) return res.status(404).json({ message: 'ไม่พบสินค้า' })
+  return res.json({ imageData: product.imageData, imageUrl: product.imageUrl })
 })
 
 // GET /api/products/low-stock

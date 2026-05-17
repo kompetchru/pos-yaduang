@@ -28,9 +28,9 @@ export default function POSPage() {
 
   const cart = useCartStore()
 
-  // โหลดสินค้าและหมวดหมู่
+  // โหลดสินค้าและหมวดหมู่ — ใช้ lite mode ตัด base64 รูปออก ลดโหลด
   useEffect(() => {
-    Promise.all([api.get('/products?limit=500'), api.get('/categories')])
+    Promise.all([api.get('/products?limit=500&lite=1'), api.get('/categories')])
       .then(([prodRes, catRes]) => {
         setProducts(prodRes.data.products)
         setCategories(catRes.data)
@@ -461,7 +461,7 @@ export default function POSPage() {
           onSaved={() => {
             setShowQuickAdd(false)
             // reload products
-            api.get('/products?limit=500').then((res) => setProducts(res.data.products))
+            api.get('/products?limit=500&lite=1').then((res) => setProducts(res.data.products))
           }}
         />
       )}
@@ -473,7 +473,7 @@ export default function POSPage() {
           onSuccess={() => {
             setShowPayment(false)
             // reload products to update stock
-            api.get('/products?limit=500').then((res) => setProducts(res.data.products))
+            api.get('/products?limit=500&lite=1').then((res) => setProducts(res.data.products))
           }}
         />
       )}

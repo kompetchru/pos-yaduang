@@ -52,7 +52,7 @@ export default function StockPage() {
     Promise.all([
       api.get('/products/low-stock'),
       api.get('/stock/movements?limit=30'),
-      api.get('/products?limit=500'),
+      api.get('/products?limit=500&lite=1'),
       api.get('/suppliers'),
     ]).then(([ls, mv, pr, sp]) => {
       setLowStock(ls.data)
