@@ -19,7 +19,12 @@ import aiRoutes from './routes/ai'
 const app = express()
 const PORT = process.env.PORT || 4000
 
-app.use(cors({ origin: '*', credentials: true }))
+app.use(
+  cors({
+    origin: true, // echo back request Origin (รองรับทุก domain ที่ frontend deploy ไว้)
+    credentials: true,
+  })
+)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
