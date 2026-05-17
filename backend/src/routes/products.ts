@@ -79,6 +79,34 @@ router.get('/:id/image-data', authenticate, async (req: AuthRequest, res: Respon
   return res.json({ imageData: product.imageData, imageUrl: product.imageUrl })
 })
 
+// GET /api/products/misc — ดึง/สร้าง misc product (สินค้าตั้งราคาเอง)
+router.get('/misc', authenticate, async (_req: AuthRequest, res: Response) => {
+  let misc = await prisma.product.findFirst({ where: { sku: 'MISC001' } })
+  if (!misc) {
+    // หา หรือ สร้าง category "อื่นๆ"
+    let cat = await prisma.category.findFirst({ where: { name: 'อื่นๆ' } })
+    if (!cat) {
+      cat = await prisma.category.create({
+        data: { name: 'อื่นๆ', icon: '📦', color: '#6B7280' },
+      })
+    }
+    misc = await prisma.product.create({
+      data: {
+        sku: 'MISC001',
+        name: 'สินค้าตั้งราคาเอง',
+        categoryId: cat.id,
+        costPrice: 0,
+        sellPrice: 0,
+        unit: 'ชิ้น',
+        stock: 999999,
+        minStock: 0,
+        isActive: false, // ซ่อนจาก list ปกติ
+      },
+    })
+  }
+  return res.json(misc)
+})
+
 // GET /api/products/low-stock
 router.get('/low-stock', authenticate, async (_req: AuthRequest, res: Response) => {
   const products = await prisma.product.findMany({

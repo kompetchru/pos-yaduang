@@ -10,6 +10,7 @@ export interface CartItem {
   discount: number
   imageUrl?: string | null
   stock: number
+  _key?: string // unique key (สำหรับ MISC items ที่ productId ซ้ำได้)
 }
 
 interface CartState {
@@ -42,13 +43,15 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   addItem: (product) => {
     const items = get().items
-    const existing = items.find((i) => i.productId === product.id)
+    // สินค้า MISC (ตั้งราคาเอง) → เพิ่มเป็นรายการใหม่ทุกครั้ง ไม่รวม
+    const isMisc = product.sku?.startsWith('MISC')
+    const existing = !isMisc ? items.find((i) => i.productId === product.id) : null
 
     if (existing) {
       if (existing.quantity >= product.stock) return
       set({
         items: items.map((i) =>
-          i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i
+          i === existing ? { ...i, quantity: i.quantity + 1 } : i
         ),
       })
     } else {
@@ -65,7 +68,9 @@ export const useCartStore = create<CartState>((set, get) => ({
             discount: 0,
             imageUrl: product.imageUrl,
             stock: product.stock,
-          },
+            // tag เพื่อแยกแถวในตะกร้าสำหรับ MISC ที่ productId ซ้ำได้
+            _key: isMisc ? `misc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : product.id,
+          } as any,
         ],
       })
     }

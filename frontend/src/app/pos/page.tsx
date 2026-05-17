@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import PaymentModal from './PaymentModal'
 import QuickAddModal from '../products/QuickAddModal'
+import CustomPriceModal from './CustomPriceModal'
 import {
   LuSearch, LuPlus, LuMinus, LuTrash2, LuArrowLeft,
-  LuPause, LuPlay, LuPercent, LuX,
+  LuPause, LuPlay, LuPercent, LuX, LuLayoutGrid, LuCircleDollarSign,
 } from 'react-icons/lu'
 
 export default function POSPage() {
@@ -24,6 +25,8 @@ export default function POSPage() {
   const [showMobileCart, setShowMobileCart] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [quickAddBarcode, setQuickAddBarcode] = useState('')
+  const [showAllProducts, setShowAllProducts] = useState(false)
+  const [showCustomPrice, setShowCustomPrice] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const cart = useCartStore()
@@ -98,8 +101,8 @@ export default function POSPage() {
     return () => window.removeEventListener('keydown', handler)
   }, [cart, products, setShowPayment, setShowHeld, setShowQuickAdd, setQuickAddBarcode])
 
-  // สินค้าปักหมุด (ปุ่มลัด)
-  const favorites = products.filter((p) => p.isFavorite).slice(0, 10)
+  // สินค้าปักหมุด (ปุ่มลัด) — ทุกตัว ไม่จำกัด
+  const favorites = products.filter((p) => p.isFavorite)
 
   // กรองสินค้า
   const filtered = products.filter((p) => {
@@ -185,6 +188,10 @@ export default function POSPage() {
                     val = val.split('').map(c => thaiToNum[c] || c).join('')
                   }
                   setSearch(val)
+                  // ถ้าเริ่มพิมพ์ค้นหา → เปิดหน้า "สินค้าทั้งหมด" อัตโนมัติ (ดูได้กว้างขึ้น)
+                  if (val.length >= 1 && !showAllProducts) {
+                    setShowAllProducts(true)
+                  }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && search.trim()) {
@@ -220,110 +227,103 @@ export default function POSPage() {
             </div>
           </div>
 
-          {/* Favorite Shortcuts */}
-          {favorites.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-gray-400 mb-1 px-1">⭐ ปุ่มลัด (สินค้าปักหมุด)</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {favorites.map((fav) => (
-                  <button
-                    key={fav.id}
-                    onClick={() => cart.addItem(fav)}
-                    disabled={fav.stock <= 0}
-                    className="flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-xl hover:shadow-md active:scale-95 transition-all disabled:opacity-40 min-w-[80px]"
-                  >
-                    <span className="text-lg leading-none">{fav.category?.icon || '⭐'}</span>
-                    <span className="text-xs font-medium text-center line-clamp-2 leading-tight">{fav.name}</span>
-                    <span className="text-xs font-bold">฿{parseFloat(fav.sellPrice).toFixed(0)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Categories */}
-          <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                !selectedCategory ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              ทั้งหมด
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  selectedCategory === cat.id ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {cat.icon} {cat.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Product Grid */}
+          {/* หน้าแรก = Favorites ใหญ่ + ปุ่ม Tools */}
           <div className="flex-1 overflow-y-auto pos-grid-pad-bottom">
-            <div className="pos-product-grid">
-              {filtered.map((product) => {
-                const outOfStock = product.stock <= 0
-                return (
-                <button
-                  key={product.id}
-                  onClick={() => {
-                    if (outOfStock) {
-                      alert(`สินค้า "${product.name}" หมดสต๊อก ขายไม่ได้`)
-                      return
-                    }
-                    cart.addItem(product)
-                  }}
-                  className={`bg-white rounded-xl border p-2 text-left transition-all active:scale-[0.97] group relative ${
-                    outOfStock
-                      ? 'border-gray-200 opacity-60'
-                      : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
-                  }`}
-                >
-                  {outOfStock && (
-                    <span className="absolute top-1 right-1 z-10 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium">
-                      หมด
-                    </span>
-                  )}
-                  <div className="w-full aspect-square bg-gray-100 rounded-lg mb-1.5 flex items-center justify-center text-2xl sm:text-3xl overflow-hidden">
-                    {(product.imageData || product.imageUrl) ? (
-                      <img
-                        src={product.imageData || (product.imageUrl?.startsWith('http') ? product.imageUrl : `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4000${product.imageUrl}`)}
-                        alt={product.name}
-                        className="w-full h-full object-cover rounded-lg"
-                        onError={(e) => {
-                          const el = e.target as HTMLImageElement;
-                          el.style.display = 'none';
-                          el.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                    ) : null}
-                    <span className={`${(product.imageData || product.imageUrl) ? 'hidden' : ''}`}>
-                      {product.category?.icon || '📦'}
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-800 truncate leading-tight">{product.name}</p>
-                  <div className="flex items-center justify-between mt-1 gap-1">
-                    <span className="text-sm sm:text-base font-bold text-orange-600">
-                      ฿{parseFloat(product.sellPrice).toFixed(0)}
-                    </span>
-                    <span className={`text-[10px] sm:text-xs whitespace-nowrap ${outOfStock ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                      เหลือ {product.stock}
-                    </span>
-                  </div>
-                </button>
-                )
-              })}
+            {/* Quick Tools */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={() => setShowAllProducts(true)}
+                className="flex items-center justify-center gap-2 py-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl font-bold shadow-md hover:shadow-lg active:scale-[0.98] transition-all"
+              >
+                <LuLayoutGrid className="w-6 h-6" />
+                <span>สินค้าทั้งหมด</span>
+              </button>
+              <button
+                onClick={() => setShowCustomPrice(true)}
+                className="flex items-center justify-center gap-2 py-4 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl font-bold shadow-md hover:shadow-lg active:scale-[0.98] transition-all"
+              >
+                <LuCircleDollarSign className="w-6 h-6" />
+                <span>ตั้งราคาเอง</span>
+              </button>
             </div>
-            {filtered.length === 0 && (
-              <div className="text-center py-12 text-gray-400">
-                <LuSearch className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>ไม่พบสินค้า</p>
+
+            {/* Favorites — ปุ่มใหญ่ทุกตัว */}
+            {favorites.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <p className="text-sm font-medium text-gray-600">⭐ สินค้าปักหมุด ({favorites.length})</p>
+                  <Link
+                    href="/products"
+                    className="text-xs text-orange-600 hover:underline"
+                  >
+                    จัดการปุ่มลัด →
+                  </Link>
+                </div>
+                <div className="pos-product-grid">
+                  {favorites.map((fav) => {
+                    const outOfStock = fav.stock <= 0
+                    return (
+                      <button
+                        key={fav.id}
+                        onClick={() => {
+                          if (outOfStock) {
+                            alert(`สินค้า "${fav.name}" หมดสต๊อก`)
+                            return
+                          }
+                          cart.addItem(fav)
+                        }}
+                        className={`bg-white rounded-xl border-2 p-2 text-left transition-all active:scale-[0.97] relative ${
+                          outOfStock
+                            ? 'border-gray-200 opacity-60'
+                            : 'border-orange-300 hover:border-orange-500 hover:shadow-md bg-orange-50/30'
+                        }`}
+                      >
+                        {outOfStock && (
+                          <span className="absolute top-1 right-1 z-10 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium">
+                            หมด
+                          </span>
+                        )}
+                        <div className="w-full aspect-square bg-white rounded-lg mb-1.5 flex items-center justify-center text-3xl sm:text-4xl overflow-hidden">
+                          {(fav.imageData || fav.imageUrl) ? (
+                            <img
+                              src={fav.imageData || (fav.imageUrl?.startsWith('http') ? fav.imageUrl : `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4000${fav.imageUrl}`)}
+                              alt={fav.name}
+                              className="w-full h-full object-cover rounded-lg"
+                              onError={(e) => {
+                                const el = e.target as HTMLImageElement;
+                                el.style.display = 'none';
+                                el.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <span className={`${(fav.imageData || fav.imageUrl) ? 'hidden' : ''}`}>
+                            {fav.category?.icon || '⭐'}
+                          </span>
+                        </div>
+                        <p className="text-xs sm:text-sm font-bold text-gray-800 line-clamp-2 leading-tight min-h-[2.4em]">{fav.name}</p>
+                        <div className="flex items-center justify-between mt-1 gap-1">
+                          <span className="text-base sm:text-lg font-bold text-orange-600">
+                            ฿{parseFloat(fav.sellPrice).toFixed(0)}
+                          </span>
+                          <span className={`text-[10px] sm:text-xs whitespace-nowrap ${outOfStock ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                            เหลือ {fav.stock}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border-2 border-dashed">
+                <p className="text-4xl mb-2">⭐</p>
+                <p className="text-sm">ยังไม่มีสินค้าปักหมุด</p>
+                <Link href="/products" className="inline-block mt-3 text-sm text-orange-600 hover:underline font-medium">
+                  ไปปักหมุดสินค้าที่ขายบ่อย →
+                </Link>
+                <p className="text-xs text-gray-400 mt-3 px-6">
+                  หรือกด &quot;สินค้าทั้งหมด&quot; ด้านบนเพื่อเลือกขาย
+                </p>
               </div>
             )}
           </div>
@@ -452,6 +452,31 @@ export default function POSPage() {
         </div>
       )}
 
+      {/* All Products Modal — กรอบเต็มจอ ดูสินค้าทั้งหมด ค้นหา + หมวดหมู่ */}
+      {showAllProducts && (
+        <AllProductsModal
+          products={products}
+          categories={categories}
+          search={search}
+          setSearch={setSearch}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          onPick={(p) => {
+            cart.addItem(p)
+          }}
+          onClose={() => {
+            setShowAllProducts(false)
+            setSearch('')
+            setSelectedCategory(null)
+          }}
+        />
+      )}
+
+      {/* Custom-priced item modal */}
+      {showCustomPrice && (
+        <CustomPriceModal onClose={() => setShowCustomPrice(false)} />
+      )}
+
       {/* Quick Add Product Modal */}
       {showQuickAdd && (
         <QuickAddModal
@@ -553,6 +578,180 @@ function CartItemRow({ item }: { item: CartItem }) {
         <span className="font-bold text-gray-800">
           {formatCurrency(item.unitPrice * item.quantity - item.discount)}
         </span>
+      </div>
+    </div>
+  )
+}
+
+/** ─── All Products Modal ─── */
+function AllProductsModal({
+  products,
+  categories,
+  search,
+  setSearch,
+  selectedCategory,
+  setSelectedCategory,
+  onPick,
+  onClose,
+}: {
+  products: any[]
+  categories: any[]
+  search: string
+  setSearch: (s: string) => void
+  selectedCategory: string | null
+  setSelectedCategory: (id: string | null) => void
+  onPick: (p: any) => void
+  onClose: () => void
+}) {
+  const filtered = products.filter((p) => {
+    const matchSearch = !search ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku.toLowerCase().includes(search.toLowerCase()) ||
+      p.barcode?.includes(search)
+    const matchCat = !selectedCategory || p.categoryId === selectedCategory
+    return matchSearch && matchCat
+  })
+
+  return (
+    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+      {/* Header */}
+      <div className="border-b px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+          aria-label="กลับ"
+        >
+          <LuArrowLeft className="w-5 h-5" />
+        </button>
+        <h2 className="text-lg font-bold text-gray-800">📦 สินค้าทั้งหมด</h2>
+        <div className="flex-1" />
+        <button
+          onClick={onClose}
+          className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+          aria-label="ปิด"
+        >
+          <LuX className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="px-3 py-2 border-b flex-shrink-0">
+        {/* Search */}
+        <div className="relative mb-2">
+          <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="ค้นหาสินค้า / SKU / บาร์โค้ด..."
+            value={search}
+            onChange={(e) => {
+              const thaiToNum: Record<string, string> = {
+                'ๅ':'1','/':'2','-':'3','ภ':'4','ถ':'5','ุ':'6','ึ':'7','ค':'8','ต':'9','จ':'0',
+                '๑':'1','๒':'2','๓':'3','๔':'4','๕':'5','๖':'6','๗':'7','๘':'8','๙':'9','๐':'0',
+              }
+              let val = e.target.value
+              if (/[ๅ\/\-ภถุึคตจ๑๒๓๔๕๖๗๘๙๐]/.test(val) && !/[ก-ฮเแโใไ]/.test(val.replace(/[ๅ\/\-ภถุึคตจ]/g, ''))) {
+                val = val.split('').map(c => thaiToNum[c] || c).join('')
+              }
+              setSearch(val)
+            }}
+            autoFocus
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none text-base"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <LuX className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
+        </div>
+
+        {/* Categories */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              !selectedCategory ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            ทั้งหมด ({products.length})
+          </button>
+          {categories.map((cat) => {
+            const count = products.filter((p) => p.categoryId === cat.id).length
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  selectedCategory === cat.id ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {cat.icon} {cat.name} ({count})
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto px-3 py-3">
+        <div className="pos-product-grid">
+          {filtered.map((product) => {
+            const outOfStock = product.stock <= 0
+            return (
+              <button
+                key={product.id}
+                onClick={() => {
+                  if (outOfStock) {
+                    alert(`สินค้า "${product.name}" หมดสต๊อก ขายไม่ได้`)
+                    return
+                  }
+                  onPick(product)
+                }}
+                className={`bg-white rounded-xl border p-2 text-left transition-all active:scale-[0.97] relative ${
+                  outOfStock
+                    ? 'border-gray-200 opacity-60'
+                    : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
+                }`}
+              >
+                {outOfStock && (
+                  <span className="absolute top-1 right-1 z-10 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium">
+                    หมด
+                  </span>
+                )}
+                <div className="w-full aspect-square bg-gray-100 rounded-lg mb-1.5 flex items-center justify-center text-2xl sm:text-3xl overflow-hidden">
+                  {(product.imageData || product.imageUrl) ? (
+                    <img
+                      src={product.imageData || (product.imageUrl?.startsWith('http') ? product.imageUrl : `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4000${product.imageUrl}`)}
+                      alt={product.name}
+                      className="w-full h-full object-cover rounded-lg"
+                      onError={(e) => {
+                        const el = e.target as HTMLImageElement;
+                        el.style.display = 'none';
+                        el.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <span className={`${(product.imageData || product.imageUrl) ? 'hidden' : ''}`}>
+                    {product.category?.icon || '📦'}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-medium text-gray-800 truncate leading-tight">{product.name}</p>
+                <div className="flex items-center justify-between mt-1 gap-1">
+                  <span className="text-sm sm:text-base font-bold text-orange-600">
+                    ฿{parseFloat(product.sellPrice).toFixed(0)}
+                  </span>
+                  <span className={`text-[10px] sm:text-xs whitespace-nowrap ${outOfStock ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                    เหลือ {product.stock}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        {filtered.length === 0 && (
+          <div className="text-center py-12 text-gray-400">
+            <LuSearch className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>ไม่พบสินค้า</p>
+          </div>
+        )}
       </div>
     </div>
   )

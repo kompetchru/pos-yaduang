@@ -77,6 +77,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     for (const item of items) {
       const product = products.find((p) => p.id === item.productId)
       if (!product) return res.status(400).json({ message: `ไม่พบสินค้า ID: ${item.productId}` })
+      // ข้ามการเช็คสต๊อกสำหรับ MISC (สินค้าตั้งราคาเอง)
+      if (product.sku.startsWith('MISC')) continue
       if (product.stock < item.quantity)
         return res.status(400).json({ message: `สินค้า "${product.name}" สต๊อกไม่พอ (เหลือ ${product.stock})` })
     }
@@ -92,7 +94,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     subtotal += total
     return {
       productId: item.productId,
-      productName: product.name,
+      // ถ้า frontend ส่ง name มา (custom-priced item) → ใช้ค่านั้น
+      productName: item.name || product.name,
       unit: item.unit || product.unit,
       quantity: item.quantity,
       unitPrice,
@@ -135,6 +138,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     if (status === 'COMPLETED') {
       for (const item of saleItems) {
         const product = products.find((p) => p.id === item.productId)!
+        // สินค้า MISC (ตั้งราคาเอง) → ไม่ตัดสต๊อก
+        const isMisc = product.sku.startsWith('MISC')
+        if (isMisc) continue
+
         await tx.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
