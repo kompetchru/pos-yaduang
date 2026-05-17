@@ -38,4 +38,26 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
   return res.json(user)
 })
 
+// POST /api/auth/change-password
+router.post('/change-password', authenticate, async (req: AuthRequest, res: Response) => {
+  const { currentPassword, newPassword } = req.body
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'กรุณากรอกรหัสผ่านปัจจุบันและรหัสผ่านใหม่' })
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 4) {
+    return res.status(400).json({ message: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' })
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
+  if (!user) return res.status(404).json({ message: 'ไม่พบผู้ใช้' })
+
+  const valid = await bcrypt.compare(currentPassword, user.password)
+  if (!valid) return res.status(401).json({ message: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' })
+
+  const hashed = await bcrypt.hash(newPassword, 10)
+  await prisma.user.update({ where: { id: user.id }, data: { password: hashed } })
+
+  return res.json({ message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' })
+})
+
 export default router

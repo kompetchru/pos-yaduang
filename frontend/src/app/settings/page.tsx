@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { LuSave, LuCheck, LuUpload, LuX } from 'react-icons/lu'
+import { LuSave, LuCheck, LuUpload, LuX, LuKey, LuEye, LuEyeOff } from 'react-icons/lu'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({})
@@ -12,6 +12,15 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Change password state
+  const [currentPwd, setCurrentPwd] = useState('')
+  const [newPwd, setNewPwd] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [pwdError, setPwdError] = useState('')
+  const [pwdSuccess, setPwdSuccess] = useState(false)
+  const [pwdSaving, setPwdSaving] = useState(false)
 
   useEffect(() => {
     api.get('/settings').then((res) => setSettings(res.data))
@@ -55,6 +64,47 @@ export default function SettingsPage() {
       setUploadError('โหลดรูปไม่สำเร็จ')
     } finally {
       e.target.value = ''
+    }
+  }
+
+  // เปลี่ยนรหัสผ่าน
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPwdError('')
+    setPwdSuccess(false)
+
+    if (!currentPwd || !newPwd) {
+      setPwdError('กรุณากรอกรหัสผ่านปัจจุบันและรหัสผ่านใหม่')
+      return
+    }
+    if (newPwd.length < 4) {
+      setPwdError('รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร')
+      return
+    }
+    if (newPwd !== confirmPwd) {
+      setPwdError('รหัสผ่านใหม่และยืนยันรหัสไม่ตรงกัน')
+      return
+    }
+    if (currentPwd === newPwd) {
+      setPwdError('รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม')
+      return
+    }
+
+    setPwdSaving(true)
+    try {
+      await api.post('/auth/change-password', {
+        currentPassword: currentPwd,
+        newPassword: newPwd,
+      })
+      setPwdSuccess(true)
+      setCurrentPwd('')
+      setNewPwd('')
+      setConfirmPwd('')
+      setTimeout(() => setPwdSuccess(false), 5000)
+    } catch (err: any) {
+      setPwdError(err?.response?.data?.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ')
+    } finally {
+      setPwdSaving(false)
     }
   }
 
@@ -192,6 +242,74 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        </Card>
+
+        {/* Change password */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LuKey className="w-5 h-5" /> เปลี่ยนรหัสผ่าน
+            </CardTitle>
+          </CardHeader>
+          <form onSubmit={handleChangePassword} className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">รหัสผ่านปัจจุบัน</label>
+              <div className="relative">
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={currentPwd}
+                  onChange={(e) => setCurrentPwd(e.target.value)}
+                  autoComplete="current-password"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 pr-12 text-base focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                  aria-label={showPwd ? 'ซ่อนรหัส' : 'แสดงรหัส'}
+                >
+                  {showPwd ? <LuEyeOff className="w-4 h-4" /> : <LuEye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">รหัสผ่านใหม่</label>
+              <input
+                type={showPwd ? 'text' : 'password'}
+                value={newPwd}
+                onChange={(e) => setNewPwd(e.target.value)}
+                autoComplete="new-password"
+                placeholder="อย่างน้อย 4 ตัวอักษร"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">ยืนยันรหัสผ่านใหม่</label>
+              <input
+                type={showPwd ? 'text' : 'password'}
+                value={confirmPwd}
+                onChange={(e) => setConfirmPwd(e.target.value)}
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
+              />
+            </div>
+
+            {pwdError && (
+              <div className="bg-red-50 text-red-600 text-sm px-4 py-2.5 rounded-xl">{pwdError}</div>
+            )}
+            {pwdSuccess && (
+              <div className="bg-green-50 text-green-700 text-sm px-4 py-2.5 rounded-xl flex items-center gap-2">
+                <LuCheck className="w-4 h-4" /> เปลี่ยนรหัสผ่านเรียบร้อยแล้ว
+              </div>
+            )}
+
+            <Button type="submit" disabled={pwdSaving} className="w-full sm:w-auto">
+              <LuKey className="w-4 h-4 mr-2" />
+              {pwdSaving ? 'กำลังเปลี่ยน...' : 'เปลี่ยนรหัสผ่าน'}
+            </Button>
+          </form>
         </Card>
       </div>
     </div>

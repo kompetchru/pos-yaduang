@@ -132,7 +132,35 @@ router.post('/', authenticate, requireRole('OWNER', 'ADMIN'), upload.single('ima
 
   if (barcode) {
     const existingBarcode = await prisma.product.findFirst({ where: { barcode } })
-    if (existingBarcode) return res.status(400).json({ message: 'Barcode ซ้ำกับสินค้าที่มีอยู่แล้ว' })
+    if (existingBarcode) {
+      // ถ้าซ้ำกับสินค้าที่ถูกลบไปแล้ว → กู้คืน + อัพเดทข้อมูลใหม่
+      if (!existingBarcode.isActive) {
+        const restored = await prisma.product.update({
+          where: { id: existingBarcode.id },
+          data: {
+            isActive: true,
+            name,
+            description,
+            categoryId,
+            costPrice: parseFloat(costPrice),
+            sellPrice: parseFloat(sellPrice),
+            unit: unit || 'ชิ้น',
+            stock: parseInt(stock) || 0,
+            minStock: parseInt(minStock) || 5,
+            unitOptions: unitOptions ? JSON.parse(unitOptions) : null,
+            ...(req.file
+              ? {
+                  imageUrl: `/uploads/products/${req.file.filename}`,
+                  imageData: `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString('base64')}`,
+                }
+              : {}),
+          },
+          include: { category: true },
+        })
+        return res.status(200).json({ ...restored, _restored: true })
+      }
+      return res.status(400).json({ message: 'Barcode ซ้ำกับสินค้าที่มีอยู่แล้ว' })
+    }
   }
 
   const existingSku = await prisma.product.findUnique({ where: { sku } })

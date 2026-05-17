@@ -164,7 +164,18 @@ export default function ProductsPage() {
               <input
                 placeholder="ค้นหาชื่อ / SKU / บาร์โค้ด..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  // แปลงภาษาไทยที่ยิงจากสแกนเนอร์กลับเป็นตัวเลข
+                  const thaiToNum: Record<string, string> = {
+                    'ๅ':'1','/':'2','-':'3','ภ':'4','ถ':'5','ุ':'6','ึ':'7','ค':'8','ต':'9','จ':'0',
+                    '๑':'1','๒':'2','๓':'3','๔':'4','๕':'5','๖':'6','๗':'7','๘':'8','๙':'9','๐':'0',
+                  }
+                  let val = e.target.value
+                  if (/[ๅ\/\-ภถุึคตจ๑๒๓๔๕๖๗๘๙๐]/.test(val) && !/[ก-ฮเแโใไ]/.test(val.replace(/[ๅ\/\-ภถุึคตจ]/g, ''))) {
+                    val = val.split('').map(c => thaiToNum[c] || c).join('')
+                  }
+                  setSearch(val)
+                }}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
               />
             </div>

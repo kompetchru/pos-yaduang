@@ -108,7 +108,9 @@ export default function POSPage() {
       p.sku.toLowerCase().includes(search.toLowerCase()) ||
       p.barcode?.includes(search)
     const matchCat = !selectedCategory || p.categoryId === selectedCategory
-    return matchSearch && matchCat && p.stock > 0
+    // ถ้ามีการค้นหา/เลือกหมวด → แสดงทุกตัว (รวมหมดสต๊อก) ไม่งั้นกรองที่ stock > 0
+    const isFiltering = !!search || !!selectedCategory
+    return matchSearch && matchCat && (isFiltering || p.stock > 0)
   })
 
   const handleHoldBill = async () => {
@@ -265,12 +267,29 @@ export default function POSPage() {
           {/* Product Grid */}
           <div className="flex-1 overflow-y-auto pos-grid-pad-bottom">
             <div className="pos-product-grid">
-              {filtered.map((product) => (
+              {filtered.map((product) => {
+                const outOfStock = product.stock <= 0
+                return (
                 <button
                   key={product.id}
-                  onClick={() => cart.addItem(product)}
-                  className="bg-white rounded-xl border border-gray-200 p-2 text-left hover:border-orange-300 hover:shadow-md transition-all active:scale-[0.97] group"
+                  onClick={() => {
+                    if (outOfStock) {
+                      alert(`สินค้า "${product.name}" หมดสต๊อก ขายไม่ได้`)
+                      return
+                    }
+                    cart.addItem(product)
+                  }}
+                  className={`bg-white rounded-xl border p-2 text-left transition-all active:scale-[0.97] group relative ${
+                    outOfStock
+                      ? 'border-gray-200 opacity-60'
+                      : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
+                  }`}
                 >
+                  {outOfStock && (
+                    <span className="absolute top-1 right-1 z-10 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium">
+                      หมด
+                    </span>
+                  )}
                   <div className="w-full aspect-square bg-gray-100 rounded-lg mb-1.5 flex items-center justify-center text-2xl sm:text-3xl overflow-hidden">
                     {(product.imageData || product.imageUrl) ? (
                       <img
@@ -293,10 +312,13 @@ export default function POSPage() {
                     <span className="text-sm sm:text-base font-bold text-orange-600">
                       ฿{parseFloat(product.sellPrice).toFixed(0)}
                     </span>
-                    <span className="text-[10px] sm:text-xs text-gray-400 whitespace-nowrap">เหลือ {product.stock}</span>
+                    <span className={`text-[10px] sm:text-xs whitespace-nowrap ${outOfStock ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                      เหลือ {product.stock}
+                    </span>
                   </div>
                 </button>
-              ))}
+                )
+              })}
             </div>
             {filtered.length === 0 && (
               <div className="text-center py-12 text-gray-400">
